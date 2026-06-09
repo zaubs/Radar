@@ -35,13 +35,17 @@ from pathlib import Path
 home = Path.home() / 'Desktop/radar'
 
 # Source locations by ecliptic coordinates organized by [long, lat]
-helion = [np.arange(360, 320, -1), np.arange(-25, 25)]
-antihelion = [np.arange(220, 180, -1), np.arange(-25, 25)]
+helion = [np.arange(360, 320, -1), np.arange(-15, 15)]
+
+helion_plus = [np.arange(360, 320, -1), np.arange(0, 15)]
+helion_minus = [np.arange(360, 320, -1), np.arange(-15, 0)]
+
+antihelion = [np.arange(220, 180, -1), np.arange(-15, 15)]
 north_apex = [np.arange(320, 220, -1), np.arange(0, 50)]
 south_apex = [np.arange(320, 220, -1), np.arange(-25, 0)]
-north_toroidal = [np.arange(320, 220, -1), np.arange(50, 75)]
+north_toroidal = [np.arange(360, 180, -1), np.arange(50, 75)]
 
-print(antihelion)
+# print(antihelion)
 
 
 def Parse(folder, filename, method='all', sources=[False, 'AH']):
@@ -118,7 +122,8 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                 slon = params[8]    
 
                 # solar centered longitude
-                corrected_lon = str(float(ecl_lon) - float(slon)) # causes longitude to shift left
+                corrected_lon = str(round(float(ecl_lon) - float(slon), 2)) # causes longitude to shift left
+                
                 
                 # apsidal direction of the geocentric radiant
                 ecl_lon_aps = params[54]
@@ -149,7 +154,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                 sdel = params[123]
                 
                 # filtering function calls
-                percent_diff, overlap = vel_check(vel_TimeofFlight, vel_PTN0, del_vel_TimeofFlight, del_vel_PTN0, vel_geo) # using the function to check if the velocities agree within 5%
+                percent_check, overlap, percent_diff = vel_check(vel_TimeofFlight, vel_PTN0, del_vel_TimeofFlight, del_vel_PTN0, vel_geo) # using the function to check if the velocities agree within 5%
                 # list of boolean value, and percentage
 
                 del_int = int_check(int_error) # using the function to check if the interferometry error is less than 2 degrees
@@ -173,6 +178,18 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                     # CASE: plotting only the helion
                     elif source == 'H':
                         if (int(float(corrected_lon)) % 360) not in helion[0] or int(float(ecl_lat)) not in helion[1]:
+                            # print('not in source')
+                            continue # should skip this event if it is not in the source
+                    
+                    # SUBCASE: Only positive latitudes in the helion
+                    elif source == 'H+':
+                        if (int(float(corrected_lon)) % 360) not in helion_plus[0] or int(float(ecl_lat)) not in helion_plus[1]:
+                            # print('not in source')
+                            continue # should skip this event if it is not in the source
+                    
+                    # SUBCLASS: Only negative latitudes in the helion
+                    elif source == 'H-':
+                        if (int(float(corrected_lon)) % 360) not in helion_minus[0] or int(float(ecl_lat)) not in helion_minus[1]:
                             # print('not in source')
                             continue # should skip this event if it is not in the source
 
@@ -205,17 +222,18 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                     if method == 'all':
                         
                         # meteors satisfying this condition are marked as clean data and added to the parent dictionary
-                        if (percent_diff != False and percent_diff <= 10 and overlap != False) and del_int != False and del_radiant != False and del_stations != False:
+                        if (percent_check != False and overlap != False) and del_int != False and del_radiant != False and del_stations != False:
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, 
                                                     "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff, "Interferometry Error": int_error, "Solid Angle Error": solid_angle_error, 
                                                     "Station Measurement Error": sdel, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0}
 
                     # # CASE: velocity check only
-                    elif method == 'vel':
+                    elif method == 'vel': # for 2025, 652,372 events are returned from AND condition below
+                                          # for 2025, 758,183 events are returned from OR condition below
                         
                         # meteors satisfying this condition are marked as clean data and added to the parent dictionary
-                        if percent_diff != False and percent_diff <= 10 and overlap != False:
+                        if percent_check != False and overlap != False:
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff,
                                                 "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, 
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0}
@@ -252,7 +270,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                     elif method == 'vel and int':
 
                         # meteors satisfying this condition are marked as clean data and added to the parent dictionary
-                        if (percent_diff != False and percent_diff <= 10 and overlap != False) and del_int != False:
+                        if (percent_check != False and overlap != False) and del_int != False:
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff,
                                                 "Interferometry Error": int_error, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, 
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0}
@@ -261,7 +279,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                     elif method == 'vel and int and angle':
 
                         # meteors satisfying this condition are marked as clean data and added to the parent dictionary
-                        if (percent_diff != False and percent_diff <= 10 and overlap != False) and del_int != False and del_radiant != False:
+                        if (percent_check != False and overlap != False) and del_int != False and del_radiant != False:
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff,
                                                     "Interferometry Error": int_error, "Solid Angle Error": solid_angle_error, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, 
                                                         "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0}
@@ -275,13 +293,56 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
 
 # Filtering methods below
 
+# def vel_check(vel1, vel2, dvel1, dvel2, velg):
+#     '''
+#     This function will be used to check if the time of flight velocity and the pre-t0 velocity agree to within 5%
+#     take vel m uncertainty too (velm - d_velm)
+#     '''
+#     if vel1[0] == '.' or vel2[0] == '.' or dvel1[0] == '.' or dvel2[0] == '.':
+#         return False, False, 0 # skip rows with missing speed data; keep return type consistent
+
+#     # changing string format to float numbers
+#     vel1, vel2, dvel1, dvel2 = float(vel1), float(vel2), float(dvel1), float(dvel2)
+#     velg = float(velg)
+
+#     # Should skip this step for any meteor with a velocity of 40 km/s or greater
+
+#     # if velg >= 40:
+#     #     return True, True # this should add the high speed echoes to the clean file data, assuming they satisfy the other restrictions
+
+
+#     difference = vel1 - vel2
+#     average = (vel1 + vel2) / 2
+#     percent_diff = np.abs(difference / average) * 100
+
+#     # consider a more restrictive filter on faster meteors, but not one strong enough as the percent difference test?
+#     if velg >= 48:
+#         return True, True,  percent_diff # 48 km/s is roughly in between the low and high velocity distributions
+#     # the check is currently if percent_diff is True AND <10. For these meteors it cannot be both
+
+#     # uncertainty overlap check
+
+#     lower1, upper1 = vel1 - dvel1, vel1 + dvel1
+#     lower2, upper2 = vel2 - dvel2, vel2 + dvel2
+#     overlap = max(lower1, lower2) <= min(upper1, upper2)
+
+#     if percent_diff <= 10:
+
+#         percent_check = True
+    
+#     else:
+
+#         percent_check = False
+    
+#     return percent_check, overlap, percent_diff
+
 def vel_check(vel1, vel2, dvel1, dvel2, velg):
     '''
     This function will be used to check if the time of flight velocity and the pre-t0 velocity agree to within 5%
     take vel m uncertainty too (velm - d_velm)
     '''
     if vel1[0] == '.' or vel2[0] == '.' or dvel1[0] == '.' or dvel2[0] == '.':
-        return False, False # skip rows with missing speed data; keep return type consistent
+        return False, False, 0 # skip rows with missing speed data; keep return type consistent
 
     # changing string format to float numbers
     vel1, vel2, dvel1, dvel2 = float(vel1), float(vel2), float(dvel1), float(dvel2)
@@ -292,20 +353,26 @@ def vel_check(vel1, vel2, dvel1, dvel2, velg):
     # if velg >= 40:
     #     return True, True # this should add the high speed echoes to the clean file data, assuming they satisfy the other restrictions
 
-    if velg >= 48:
-        return True, True # 48 km/s is roughly in between the low and high velocity distributions
-   
+
+    # consider a more restrictive filter on faster meteors, but not one strong enough as the percent difference test?
+    
     difference = vel1 - vel2
     average = (vel1 + vel2) / 2
     percent_diff = np.abs(difference / average) * 100
 
-    # uncertainty overlap check
-
     lower1, upper1 = vel1 - dvel1, vel1 + dvel1
     lower2, upper2 = vel2 - dvel2, vel2 + dvel2
     overlap = max(lower1, lower2) <= min(upper1, upper2)
-    
-    return percent_diff, overlap
+
+    if vel1 >= 48:
+        return True, True, percent_diff # 48 km/s is roughly in between the low and high velocity distributions
+    # the check is currently if percent_diff is True AND <10. For these meteors it cannot be both
+
+    # uncertainty overlap check
+
+    else:
+        return percent_diff <= 10, overlap, percent_diff
+
 
 
 def int_check(int_error):
@@ -358,7 +425,7 @@ def station_check(num_stations, sdel):
         return False 
 
 
-def convex_hull(lmda, beta, vels, year):
+def voxel_map(lmda, beta, vels, year, map_mode='shower'):
     '''
     put meteor distribution into a voxel (cubic space)
     voxels defined by buffer (5 degrees solar longitude) - I used copliot to do this step, I've never created voxels in a 3d plot before
@@ -385,6 +452,9 @@ def convex_hull(lmda, beta, vels, year):
     H, edges = np.histogramdd(np.vstack((lmda, beta, vels)).T, bins=bins) # count per voxel
 
     voxels = H > 0
+
+    # print(voxels) # array of boolean values
+    # print(H) # 3d array of bin counts, do subtraction with this
 
     cmap = cm.get_cmap('plasma')
 
@@ -415,54 +485,177 @@ def convex_hull(lmda, beta, vels, year):
 
     ax.set_title(f'Clean Meteor Sources scaled by geocentric velocity - measurements from {year}', fontsize=14)
 
-    # limits to where the gemenids are (reproducing Kipreos et al (2022)), no data seen here for me though; might have an issue with defining my coordinates in my scale or relabel function
+    # limits to where the DSX meteors are (reproducing Kipreos et al (2022)), no data seen here for me though; might have an issue with defining my coordinates in my scale or relabel function
     # ax.set_xlim(320, 340)
     # ax.set_ylim(-30, 0)
 
     ax.xaxis.set_major_locator(plt.FixedLocator([-90, 0, 90, 180, 270, 360])) # defines tick marks on the x axis
     ax.xaxis.set_major_formatter(plt.FuncFormatter(relabel)) # re labels the x axis tick marks to show we are labeled at 270 degrees
-    ax.invert_xaxis()
+    # ax.invert_xaxis()
     plt.grid()
     plt.show()
+
+    # thinking of using this in two instances: once before the convex hull to show the area of interest, and once after to show the isolated meteor shower
+
+    if map_mode == 'shower':
+
+        return H, edges # edges contains three arrays of coordinates by bin (lon, lat, vel)
+
+def background_matrix(lmda, beta, vel, slon, year, shower):
+
+    '''
+    This function will be used to generate a heat map of the sporadic meteors 5 days before and after a shower, 
+    and will return a number density matrix of the days before, days after, and an average of the two to be subtracted from the matrix of the shower.
+    The shower's matrix may be generated by this function following the background.
+    '''
+
+    # heat_map(lmda, beta, year, ) path?
+
+def convex_hull(lmda, beta, vels, shower_lmda, shower_beta, shower_vels, slons, year):
+
+    '''
+    After creating a 3D voxel map of an isolated shower, the background flux is taken 5 days before and after the shower is active and a3 sigma test is done on each meteor's
+    ecliptic coordinates and geocentric velocity.
+    The first three parameters are for all ecliptic coordinates close to and within the active timeframe of the shower
+    The following three parameters are for all ecliptic coordinates within the active timeframe of the showwer
+    '''
 
     # next is to subtract the background from any showers; will need days/locations with shower data first
     
     # using these for a 3*std test to isolate shower only meteors
-    lmda_std = np.std(lmda)
-    beta_std = np.std(beta)
-    vels_std = np.std(vels)
+    lmda_std = np.std(shower_lmda)
+    beta_std = np.std(shower_beta)
+    vels_std = np.std(shower_vels)
+
+    days_before = slons[0:5] # first five solar longitudes
+    days_after = slons[-6:-1] # last five solar longitudes
+
+    print(days_before, days_after)
+
+    # next need to find a way to get the flux; might be a few steps ahead of where I am in the project though
+    # will confirm and revisit in the future if needed
+
+    mass_index = 1 # from MCB
+
+    # need files of the before and after slons to take average number density matrix; how 'big' should this matrix be (dimension wise)
 
 
 
-def heat_map(lmda, beta, year, path): # include month mode at some point for labelling
+
+
+
+
+def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, shower_name=None): # include month mode at some point for labelling
     '''
     This function generates a heat map of the user specified orbit file, based on meteor counts per bin
+    Month and source modes may be worked individually or simultaneously - in terms of saving distinct files of data
+    Shower mode is best worked on its own - mainly using this mode to collect the number density matrices for days before/after shower activity
     '''
     figure, ax = plt.subplots(figsize=(10,5))
 
-    h = ax.hist2d(lmda, beta, bins=20, cmap='plasma')
+    h = ax.hist2d(lmda, beta, bins=20, cmap='plasma') # should save files by bin size now for different runs
+
+    binsize = len(h[0])
+    # print(binsize)
+
+    # print(h[0]) # counts per bin 
+
+    # for i in range(len(h[0])):
+    #     h[i] = h[i].strip('[]')
+    #     count_list = h[i].split()
+    #     print(count_list) # this is the list of counts per bin; need to convert to a 2d array for the colorbar
+
+    # print(h[1]) # average longitude per bin
+    # print(h[2]) # average latitude per bin
+    # print(h[3]) 
 
     figure.colorbar(h[3], ax=ax, label='Number of meteors per bin')
 
     ax.set_xlabel('Ecliptic Longitude (Lambda)')
     ax.set_ylabel('Ecliptic Latitude (Beta)')
-    ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
 
-    # ax.set_ylim(-100, 100)
-    # ax.set_xlim(-180, 180)
+    ax.set_ylim(-60, 90)
+    ax.set_xlim(-150, 150)
     # ax.xaxis.set_major_locator(plt.FixedLocator([-90, 0, 90, 180, 270, 360])) # defines tick marks on the x axis
     # ax.xaxis.set_major_formatter(plt.FuncFormatter(relabel)) # re labels the x axis tick marks to show we are labeled at 270 degrees
+
+    ax.set_facecolor("#0D0F81")
+
     ax.invert_xaxis()
     # plt.grid()
     # plt.legend()
+    counts_path = f'{home}/clean file data/0602/{method} events' # should change this save directory at some point
+    os.makedirs(counts_path, exist_ok=True)
 
-    # plt.savefig(f'{path}/{year}_radiantDist.png')
+    if month == None and meteor_source == None and shower_name == None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
+        plt.savefig(f'{path}/{year}_{method}Filter_radiantColorDist{binsize}.png')
+
+        counts_file = os.path.join(counts_path, f"{method}-counts-{year}-{binsize}-29.txt")
+    
+    elif month == None and meteor_source != None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {year}')
+        plt.savefig(f'{path}/{year}_{method}Filter_{meteor_source}_radiantColorDist{binsize}.png')
+
+        counts_file = os.path.join(counts_path, f"{method}-counts-{meteor_source}-{year}-{binsize}-29.txt")
+
+    elif month != None and meteor_source == None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {month}{year}')
+        plt.savefig(f'{path}/{year}{month}_{method}Filter_radiantColorDist{binsize}.png')
+
+        counts_file = os.path.join(counts_path, f"{method}-counts-{month}-{year}-{binsize}-29.txt")
+    
+    elif month != None and meteor_source != None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {month}/{year}')
+        plt.savefig(f'{path}/{year}{month}_{method}Filter_{meteor_source}_radiantColorDist{binsize}.png')
+
+        counts_file = os.path.join(counts_path, f"{method}-counts-{meteor_source}-{year}{month}-{binsize}-29.txt")
+
+    elif shower_name != None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {shower_name} in {year}')
+        plt.savefig(f'{path}/{year}_{method}Filter_{shower_name}_radiantColorDist{binsize}.png')
+
+        counts_file = os.path.join(counts_path, f"{method}-counts-{shower_name}-{year}-{binsize}-29.txt")
+
+    with open(counts_file, 'w') as meteor_counts:
+        meteor_counts.write('Ecl Lon, Ecl Lat, Counts per bin\n\n')
+        for i in range(len(h[0])):
+        
+        # writing to file: Velocity bin value, counts in that bin
+            meteor_counts.write(f'{h[1][i]} {h[2][i]} [{",".join([str(val) for val in h[0][i]])}]\n')
+            # meteor_counts.write(f' {h[0][i]}')
+
+            # for j in range(len(h[0][i])):
+            #     meteor_counts.write(f' {h[0][i][j]}') # writing the count value for each bin in the row
+            # meteor_counts.write('\n')
+             
 
     plt.show()
 
+    # calculating bin width here
+    d_lmda = np.diff(h[1])[0] # longitude width per bin
+    d_beta = np.diff(h[2])[0] # latitude width per bin
+
+    # print(d_lmda, d_beta)
+
+    bin_area = d_lmda * d_beta
+
+    # print(bin_area, len(lmda))
+
+    num_density = h[0] / (len(lmda) * bin_area)
+
+    # h[0] is the matrix of counts per bin
+    # dividing this by the number of longitude coordinates * area per bin
+
+    # print(type(num_density)) # write to file to see if this is a number density matrix that would work?
+
+    return h # should contain the counts per bin, the average ecliptic coordinates constructing the bins, and the color bar
+# instead of creating a new density matrix with num_density, will try to subtract h[0]'s first -  as these are the counts and might be considered as number densities in a sense
+# If i return num_density to echo plot, will need to either work with it within that function, or return it again using echo plot
 
 
-def vel_map(lmda, beta, vels, year, path):
+
+def vel_map(lmda, beta, vels, year, path, method, month=None, meteor_source=None):
     '''
     This function generates a heat map of the user specified orbit file, based on average geocentric velocity per bin
     '''
@@ -480,22 +673,38 @@ def vel_map(lmda, beta, vels, year, path):
 
     ax.set_xlabel('Ecliptic Longitude (Lambda)')
     ax.set_ylabel('Ecliptic Latitude (Beta)')
-    ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
 
     # background figure's color - other than white
-    ax.set_facecolor("#1D1231")
+    ax.set_facecolor("#0D0F81")
 
     ax.invert_xaxis()
     # plt.grid()
     # plt.legend()
 
-    # plt.savefig(f'{path}/{year}_radiantDist.png')
+    ax.set_ylim(-60, 90)
+    ax.set_xlim(-150, 150)
+
+    if month == None and meteor_source == None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
+        plt.savefig(f'{path}/{year}_{method}Filter_velColorDist.png')
+    
+    elif month != None and meteor_source == None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year} ({month})')
+        plt.savefig(f'{path}/{year}{month}_{method}Filter_velColorDist.png')
+
+    elif month == None and meteor_source != None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {year}')
+        plt.savefig(f'{path}/{year}_{method}Filter_{meteor_source}_velColorDist.png')
+
+    elif month != None and meteor_source != None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {month}/{year}')
+        plt.savefig(f'{path}/{year}{month}_{method}Filter_{meteor_source}_velColorDist.png')
 
     plt.show()
 
 
 
-def scatter_map(lmda, beta, year, path):
+def scatter_map(lmda, beta, year, path, method, month=None, meteor_source=None):
     '''
     This function generates distribution of observed meteors as a scatter plot of ecliptic coordinates
     '''
@@ -506,17 +715,27 @@ def scatter_map(lmda, beta, year, path):
 
     ax.set_xlabel('Ecliptic Longitude (Lambda)')
     ax.set_ylabel('Ecliptic Latitude (Beta)')
-    ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
 
     ax.set_ylim(-100, 100)
     ax.set_xlim(-180, 180)
-    # ax.xaxis.set_major_locator(plt.FixedLocator([-90, 0, 90, 180, 270, 360])) # defines tick marks on the x axis
-    # ax.xaxis.set_major_formatter(plt.FuncFormatter(relabel)) # re labels the x axis tick marks to show we are labeled at 270 degrees
+    ax.xaxis.set_major_locator(plt.FixedLocator([-90, 0, 90, 180, 270, 360])) # defines tick marks on the x axis
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(relabel)) # re labels the x axis tick marks to show we are labeled at 270 degrees
     ax.invert_xaxis()
     plt.grid()
     # plt.legend()
 
-    plt.savefig(f'{path}/{year}_radiantDist.png')
+    if month == None and meteor_source == None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
+        plt.savefig(f'{path}/{year}_{method}Filter_radiantDist.png')
+    elif month != None and meteor_source == None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {month}/{year}')
+        plt.savefig(f'{path}/{year}{month}_{method}Filter_radiantDist.png')
+    elif month == None and meteor_source != None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {year}')
+        plt.savefig(f'{path}/{year}_{method}Filter_{meteor_source}_radiantDist.png')
+    elif month != None and meteor_source != None:
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {month}/{year}')
+        plt.savefig(f'{path}/{year}{month}_{method}Filter_{meteor_source}_radiantDist.png')
 
     plt.show()
 
@@ -781,7 +1000,7 @@ def grab_coords(parent):
         # counting the meteors we can make distributions with
         loc_count += 1
         # lmda = long_transform(float(lmda)) # transforming longitude to 0-360 scale for plotting
-        print(lmda)
+        # print(lmda)
 
         # Using these three for 3d plots
         latitudes.append(float(beta))
@@ -799,7 +1018,7 @@ def grab_coords(parent):
     return latitudes, longitudes, ptn0_vels, del_ptn0_vels, geo_vels, keys_to_delete, loc_count, times, dists, angles # also returning the number of files with defined coordinates for more precise tracking purposes
 
 
-def echo_plot(lmda, beta, vels, year, month=None, shower=None, source=None, mode='year', map_mode='scatter'):
+def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=None, mode='year', map_mode='scatter'):
     '''
     This function takes the ecliptic coordinates of clean echoes that satisfy set restrictions and maps them to a 2 dimensional grid representing a celestial 'sphere'
         A goal is to create elliptical figures, but currently rectangular until I figure out how to do that
@@ -816,15 +1035,15 @@ def echo_plot(lmda, beta, vels, year, month=None, shower=None, source=None, mode
 
         if map_mode == 'density':
 
-            heat_map(lmda, beta, year, plot_path)
+            h = heat_map(lmda, beta, year, plot_path, method)
         
         elif map_mode == 'velocity':
 
-            vel_map(lmda, beta, vels, year, plot_path)
+            vel_map(lmda, beta, vels, year, plot_path, method)
 
         else:
 
-            scatter_map(lmda, beta, year, plot_path)
+            scatter_map(lmda, beta, year, plot_path, method)
 
     
     # monthly mode has a save option to the the clean file direcotry
@@ -836,14 +1055,14 @@ def echo_plot(lmda, beta, vels, year, month=None, shower=None, source=None, mode
     
         if map_mode == 'density':
 
-            heat_map(lmda, beta, year, plot_path)
+            h = heat_map(lmda, beta, year, plot_folder, method)
 
         elif map_mode == 'velocity':
 
-            vel_map(lmda, beta, vels, year, plot_path)
+            vel_map(lmda, beta, vels, year, plot_folder, method)
         
         else:
-            scatter_map(lmda, beta, year, plot_path)
+            scatter_map(lmda, beta, year, plot_folder, method, month=month)
 
         # ax.set_xlabel('Ecliptic Longitude (Lambda)')
         # ax.set_ylabel('Ecliptic Latitude (Beta)')
@@ -866,15 +1085,17 @@ def echo_plot(lmda, beta, vels, year, month=None, shower=None, source=None, mode
 
         if map_mode == 'density':
             
-            heat_map(lmda, beta, year, plot_folder)
+            h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower)
+
+            return h
 
         elif map_mode == 'velocity':
 
-            vel_map(lmda, beta, vels, year, plot_folder)
+            vel_map(lmda, beta, vels, year, plot_folder, method)
         
         else:
 
-            scatter_map(lmda, beta, year, plot_folder)
+            scatter_map(lmda, beta, year, plot_folder, method)
 
         # ax.set_xlabel('Ecliptic Longitude (Lambda)')
         # ax.set_ylabel('Ecliptic Latitude (Beta)')
@@ -893,53 +1114,53 @@ def echo_plot(lmda, beta, vels, year, month=None, shower=None, source=None, mode
 
     elif mode == 'source':
         
-
+        # use the below code to overplot clean data overtop of raw data, which is specific to an existing raw file
         # overplotting new clean data over raw data
-        raw_folder = home / f'clean file data/source plotting/{source}/raw test/{year} clean events'
+        # raw_folder = home / f'clean file data/source plotting/{source}/raw test/{year} clean events'
 
-        os.makedirs(raw_folder, exist_ok=True)
+        # os.makedirs(raw_folder, exist_ok=True)
 
-        raw_lons = []
-        raw_lats = []
-        raw_vels = []
+        # raw_lons = []
+        # raw_lats = []
+        # raw_vels = []
 
-        raw_file = raw_folder / 'clean-2022-350-29.txt'
+        # raw_file = raw_folder / 'clean-2022-350-29.txt'
 
-        with open(raw_file, 'r') as raw_data:
+        # with open(raw_file, 'r') as raw_data:
 
-            for r in range(2):
-                    next(raw_data, None)
+        #     for r in range(2):
+        #             next(raw_data, None)
 
-            for line in raw_data:
+        #     for line in raw_data:
 
-                line = line.strip()
-                params = line.split()
+        #         line = line.strip()
+        #         params = line.split()
 
-                ecl_lon = float(params[3])
-                ecl_lat = float(params[4])
-                vel_geo = float(params[11])
+        #         ecl_lon = float(params[3])
+        #         ecl_lat = float(params[4])
+        #         vel_geo = float(params[11])
 
-                scaled_lon = scale(ecl_lon)
+        #         scaled_lon = scale(ecl_lon)
 
-                raw_lons.append(scaled_lon)
-                raw_lats.append(ecl_lat)
-                raw_vels.append(vel_geo)
+        #         raw_lons.append(scaled_lon)
+        #         raw_lats.append(ecl_lat)
+        #         raw_vels.append(vel_geo)
 
-        plot_path = f'{home}/clean file data/{year} clean figures' # new directory made
+        plot_path = f'{home}/clean source data/{year} {source} clean figures' # new directory made
         os.makedirs(plot_path, exist_ok=True)
 
 
         if map_mode == 'density':
             
-            heat_map(raw_lons, raw_lats, year, plot_path)
+            # heat_map(raw_lons, raw_lats, year, plot_path)
 
-            heat_map(lmda, beta, year, plot_path)
+            h = heat_map(lmda, beta, year, plot_path, method, meteor_source=source)
         
         elif map_mode == 'velocity':
 
-            vel_map(raw_lons, raw_lats, vels, year, plot_path)
+            # vel_map(raw_lons, raw_lats, vels, year, plot_path)
 
-            vel_map(lmda, beta, vels, year, plot_path)
+            vel_map(lmda, beta, vels, year, plot_path, method)
         
         # ax_raw.set_xlabel('Ecliptic Longitude (Lambda)')
         # ax_raw.set_ylabel('Ecliptic Latitude (Beta)')
@@ -975,9 +1196,9 @@ def echo_plot(lmda, beta, vels, year, month=None, shower=None, source=None, mode
 
         else:
             
-            scatter_map(raw_lons, raw_lats, year, plot_path)
+            # scatter_map(raw_lons, raw_lats, year, plot_path)
 
-            scatter_map(lmda, beta, year, plot_path)
+            scatter_map(lmda, beta, year, plot_path, method)
 
     # add a successive plot here; showing distribution after each successive filter applied
 
@@ -1096,7 +1317,7 @@ def vel_histo(vels, year, method, month=None, shower=None, source=None, mode='ye
         figure = plt.figure(figsize=(10,5))
 
         n, bins, patches = plt.hist(vels, bins=200)
-        print(n, bins, patches) # counts, mean vel per bin, object type? only worry about first two
+        # print(n, bins, patches) # counts, mean vel per bin, object type? only worry about first two
         bin_index = np.digitize(mean, bins) - 1
         bin_index = np.clip(bin_index, 0, len(n) - 1)
 
@@ -1128,6 +1349,8 @@ def vel_histo(vels, year, method, month=None, shower=None, source=None, mode='ye
         plt.savefig(f'{plot_path}/{year}_velocities.png')
         plt.show()
 
+        num_bins = len(n)
+
         # Writing the histogram data to a txt file
         data_path = f'{home}/clean file data/{year} clean events'
         data_file = os.path.join(data_path, f"FULL-{year}-29.txt")
@@ -1141,12 +1364,15 @@ def vel_histo(vels, year, method, month=None, shower=None, source=None, mode='ye
             vel_data.write(f'Distribution Peak (Mean Index): {n[bin_index]}\n')
             vel_data.write(f'Distribution Width (mean +/- std): {2*std} km/s\n')
         
+        
 
         # use this to keep track of how many events per bin are making it through the filtering
-        case_vels_path = f'{home}/clean file data/0601/{method} events'
+        case_vels_path = f'{home}/clean file data/0602_2/{method} events'
         os.makedirs(case_vels_path, exist_ok=True)
 
-        vels_file = os.path.join(case_vels_path, f"{method}-velocities-{year}-29.txt")
+        vels_file = os.path.join(case_vels_path, f"{method}-velocities-{year}-{num_bins}-29.txt")
+
+        
 
         with open(vels_file, 'w') as vel_counts:
             vel_counts.write('Velocities, Counts\n\n')
@@ -1192,6 +1418,8 @@ def vel_histo(vels, year, method, month=None, shower=None, source=None, mode='ye
         plt.savefig(f'{plot_folder_vel}/{year}{month}_velocities.png')
         plt.show()
 
+        num_bins = len(n)
+
         data_path = f'{home}/clean file data/{year} clean events by month/{year} {month} clean echoes'
         data_file = os.path.join(data_path, f"FULL-{year}{month}-29.txt")
 
@@ -1200,7 +1428,7 @@ def vel_histo(vels, year, method, month=None, shower=None, source=None, mode='ye
             vel_data.write(f'\nMean Velocity: {mean} km/s\n') # should include uncertanties at some point too
             vel_data.write(f'Median Velocity: {median} km/s\n')
             vel_data.write(f'Root Mean Square Velocity: {rms} km/s\n')
-            vel_data.write(f'Standard Deviation: +/-{std, 2} km/s\n')
+            vel_data.write(f'Standard Deviation: +/-{std:.2f} km/s\n')
             vel_data.write(f'Distribution Peak (Mean Index): {n[bin_index]}\n')
             vel_data.write(f'Distribution Width (mean +/- std): {2*std} km/s\n')
 
@@ -1244,11 +1472,15 @@ def vel_histo(vels, year, method, month=None, shower=None, source=None, mode='ye
         plt.savefig(f'{plot_path}/{year}{shower}_velocities.png')
         plt.show()
 
+        num_bins = len(n)
+
         # Writing the histogram data to a txt file
         data_path = f'{home}/clean shower data/{year} {shower} clean events'
         data_file = os.path.join(data_path, f"FULL-{year}{shower}-29.txt")
 
-        with open(data_file, 'a') as vel_data:
+        os.makedirs(data_path, exist_ok=True)
+
+        with open(data_file, 'w') as vel_data:
         
             vel_data.write(f'\nMean Velocity: {mean} km/s\n') # should include uncertanties at some point too
             vel_data.write(f'Median Velocity: {median} km/s\n')
@@ -1296,11 +1528,16 @@ def vel_histo(vels, year, method, month=None, shower=None, source=None, mode='ye
         plt.savefig(f'{plot_path}/{year}{source}_velocities.png')
         plt.show()
 
+        num_bins = len(n)
+
         # Writing the histogram data to a txt file
         data_path = f'{home}/clean source data/{year} {source} clean events'
-        data_file = os.path.join(data_path, f"FULL-{year}{shower}-29.txt")
+        os.makedirs(data_path, exist_ok=True)
 
-        with open(data_file, 'a') as vel_data:
+        data_file = os.path.join(data_path, f"FULL-{year}{source}-{num_bins}-29.txt")
+
+        
+        with open(data_file, 'w') as vel_data:
         
             vel_data.write(f'\nMean Velocity: {mean} km/s\n') # should include uncertanties at some point too
             vel_data.write(f'Median Velocity: {median} km/s\n')
@@ -1371,7 +1608,7 @@ def monthly_echoes(year, folder_name, file):
                     month_file.write(clean_data.read()) # write the clean echo data for that month to the new file; works but need to check that it's writing the correct data to the correct file; will do later
 
 
-def monthly_plotter(year, month, folder, file, method):
+def monthly_plotter(year, month, folder, file, method, map_method='scatter'):
     '''
     This will be used to create plots for each month of data for a specified year by the user
     Follows the organization function and uses the copied data that has been sorted into monthly folders
@@ -1447,13 +1684,13 @@ def monthly_plotter(year, month, folder, file, method):
         scaled_longitudes = scale(longitudes) # scaling longitudes to be centered at 270 degrees
 
         ## 2d plot
-        echo_plot(scaled_longitudes, latitudes, velocities, year, month, mode='month')
+        echo_plot(scaled_longitudes, latitudes, velocities, year, method, month, mode='month', map_mode=map_method)
 
         # 3d plot
         echo_3d_plot(scaled_longitudes, latitudes, velocities, year, month)
 
         # velocities histogram
-        vel_histo(velocities, year, month, mode='month')
+        vel_histo(velocities, year, method, month=month, mode='month')
         
     
     except FileNotFoundError:
@@ -1560,7 +1797,7 @@ def scale(x):
 
 # Only use this for presentation-style plots
 def relabel(x, pos):
-    pass
+    # pass
     '''
     This function will relabel the x axis to have labels of 90 degrees, goig down to zero, then going from 359 down to 91 degrees
     '''
@@ -1616,7 +1853,12 @@ method = input('Enter the method you wish to do testing with (choose from: raw, 
 method = method.lower().strip()
 
 
-# Source that is currently being plotted - change for testing
+# prompt asking for monthly organization
+
+monthly = input('Do you want to organize your data by month? (Y or N): ')
+
+
+# Source to be plotted based on user input
 
 source_use = input('Do you wish to work directly with the sporadic sources? (Y or N): ') # maybe after this, add a check to Parse that writes raw data to a seperate file for overplotting if true
 
@@ -1627,6 +1869,18 @@ if source_use.upper() == 'Y':
 else:
     source_isolate = False
     source = None
+
+
+# Shower to be plotted based on user input
+
+shower_use = input('Do you wish to work directly with a specific shower? (Y or N): ')
+
+if shower_use.upper().strip() == 'Y':
+    shower_isolate = True
+    # will ask for the name of the shower following the yearly plot for now
+    # might be worth working on different modes - if input is month, the code does monthly plotting, if the input is shower, the code does shower plotting
+else:
+    shower_isolate = False
 
 # Option for radiant heatmap, or a scatter plot
 map = input('Do you wish to see your plot as a color map? (Y or N): ')
@@ -1698,35 +1952,26 @@ else:
 year = orb_date[0:4] # this is only valid if the data set being ran is within the same calendar year; need something more universal eventually 
 
 # Full Year Data: Printed to the terminal and saved to the same directory as the clean echo data
-message1 = f'\n\nFULL YEAR DATA:\n\nThe total number of clean echoes across all files is {num_echoes}, with {num_echo_locs} events observed at distinct times and that have defined ecliptic coordinate and can be plotted.\n'
-message2 = f'For all events within 10 milliseconds of eachother, {delranges} events were deleted for being within 6km of each other, {delangles} events were deleted for having zenith/azimuth angles within 5 degrees.\n'
-message3 = f'There were {num_without_coords} events deleted for not having a defined set of ecliptic coordinates.\n'
+message1 = f'\n\nFULL YEAR DATA:\n\n'
+message2 = f'The total number of clean echoes across all files is {num_echoes}, with {num_echo_locs} events observed at distinct times and that have defined ecliptic coordinate and can be plotted.\n'
+message3 = f'For all events within 10 milliseconds of eachother, {delranges} events were deleted for being within 6km of each other, {delangles} events were deleted for having zenith/azimuth angles within 5 degrees.\n'
+message4 = f'There were {num_without_coords} events deleted for not having a defined set of ecliptic coordinates.\n'
 
-message = message1+message2+message3
+year_message = message1+message2+message3+message4
 
-print(message)
+print(year_message)
 
-
+ # writes data to this newly created file regardless of the mode chosen (yearly, monthly, shower, sources)
 main_path = f'{home}/clean file data/{year} clean events'
 
 write_path = os.path.join(main_path, f"FULL-{year}-29.txt")
 
 with open(write_path, 'w') as full_data:
-    full_data.write(message)
+    full_data.write(year_message)
 
 
 scaled_lons = scale(plot_lons) # scaling longitudes to be centered at 270 degrees
 
-
-# creating a map of the clean meteor sources based on their coordinates of ecliptic latitude and longitude
-# echo_plot(scaled_lons, plot_lats, year)
-
-if source_isolate:
-    echo_plot(scaled_lons, plot_lats, plot_vels, year, source=source, mode='source', map_mode=map_mode)
-    vel_histo(plot_vels, year, method, source=source, mode='source')
-else:
-    echo_plot(scaled_lons, plot_lats, plot_vels, year, map_mode=map_mode)
-    vel_histo(plot_vels, year, method)
 
 # number of orbits with ptn0 speeds vs uncertainty / number of orbits eliminated from filter
 # will make both, unsure which one they want
@@ -1757,113 +2002,262 @@ else:
 # echo_3d_plot(scaled_lons, plot_lats, plot_vels, year)
 
 # voxel map for convex hull
-# convex_hull(scaled_lons, plot_lats, plot_vels, year)
+# voxel_map(scaled_lons, plot_lats, plot_vels, year)
 
 # velocity histogram binning; want to do this for raw data, then once again for the filtered data; currently doing it with all filtering applied
 # vel_histo(plot_vels, year, method)
 
+gen_message = message2+message3+message4 # message to go into full files that are not yearly data (for monthly, shower and source files)
+
 ## MONTHLY ORGANIZATION STEP ##
 
 # here, the code organizes the file data by month; might take away the option for user input and do this automatically
-# clean_folder_name = input('Enter the folder name of clean echo data you wish to organize by month (or drag folder here): ').strip("'\"")  # Strip quotes that may be included when dragging from file explorer
 
-# clean_folder = sorted(os.listdir(os.path.join(clean_folder_name)))
+if monthly.upper().strip() == 'Y':
 
+    clean_folder_name = input('Enter the folder name of clean echo data you wish to organize by month (or drag folder here): ').strip("'\"")  # Strip quotes that may be included when dragging from file explorer
 
-# for clean_file in clean_folder:
-#     # print(clean_file)
-
-#     monthly_echoes(year, clean_folder_name, clean_file)
+    clean_folder = sorted(os.listdir(os.path.join(clean_folder_name)))
 
 
-#     # next step is to write a function that will go through the monthly organized files and plot the coordinates for each month to compare meteor sources across months; will do later
+    for clean_file in clean_folder:
+        # print(clean_file)
 
-# for m in range(1, 13):
-#     # plot the coordinates for each month
+        monthly_echoes(year, clean_folder_name, clean_file)
 
-#     monthly_plotter(year, m, clean_folder_name, clean_file, method)
+
+        # next step is to write a function that will go through the monthly organized files and plot the coordinates for each month to compare meteor sources across months; will do later
+
+    for m in range(1, 13):
+        # plot the coordinates for each month
+
+        monthly_plotter(year, m, clean_folder_name, clean_file, method, map_method=map_mode)
+
+
+## SOURCE PLOTTING STEP ##
+
+# creating a map of the clean meteor sources based on their coordinates of ecliptic latitude and longitude
+# echo_plot(scaled_lons, plot_lats, plot_vels, year, method)
+
+
+if source_isolate:
+    echo_plot(scaled_lons, plot_lats, plot_vels, year, method, source=source, mode='source', map_mode=map_mode)
+    vel_histo(plot_vels, year, method, source=source, mode='source')
+
+else:
+    echo_plot(scaled_lons, plot_lats, plot_vels, year, method, map_mode=map_mode)
+    vel_histo(plot_vels, year, method)
+
     
 
 ## SHOWER REMOVAL STEP ##
 
 # Localizing and clearing out the meteor showers from the sporadic background
 
+if shower_isolate:
 
-shower_folder_name = input('Enter the folder name of the clean shower data (format of the ending folder should be \'YYYY clean events\'): ').strip("'\"")
-
-
-shower_folder = sorted(os.listdir(os.path.join(home, shower_folder_name)))
-
-# shower_name = shower_folder[-1:-4] # should be last three letters of the user input
-# print(shower_name)
-
-shower_name = input('Enter the abbreviation of the shower you\'d like to work with - select from the abbreviations: ARI, DSX, ETA, GEM, QUA, SDA: ').upper().strip()
-# from here, the shower parser function should enter the clean file data folder and pick out the days the shower is active using specified solar longitude by a dictionary
-
-# list of important solar longitudes per shower
-shower_slon = {'ARI' : np.arange(62,99), 'DSX': np.arange(174,-197), 'ETA' : np.arange(30, 66),
-               'GEM' : np.arange(240,273), 'QUA' : np.arange(232, 291), 'SDA' : np.arange(114, 164)}
-
-# ordered lists of geocentric right ascension (alpha) and declination (delta)
-shower_rads = {'ARI' : [45.7, 25], 'DSX': [154.3, -1], 'ETA' : [337.9, -0.9],
-               'GEM' : [112.5, 32.1],'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3]}
-
-# get the solar longitudes of the showers from the filenames
-
-full_lons = []
-full_lats = []
-full_vels = []
-
-# array of solar longitudes of a shower based on user input
-input_slons = shower_slon[shower_name]
-print(input_slons)
-
-# collecting the shower files here
-for shower_file in shower_folder:
-
-    if shower_file[0:4].upper() == 'FULL':
-        continue
-
-    file_slon = shower_file[11:14]
-    # print(file_slon)
+    shower_folder_name = input('Enter the folder name of the clean shower data (format of the ending folder should be \'YYYY clean events\'): ').strip("'\"")
 
 
-    if file_slon[0:2] == '00':
-        file_slon = int(file_slon[2]) # taking the leading zero out from solar longitude
-        # print(file_slon)
+    shower_folder = sorted(os.listdir(os.path.join(home, shower_folder_name)))
 
+    # shower_name = shower_folder[-1:-4] # should be last three letters of the user input
+    # print(shower_name)
 
-    elif file_slon[0] == '0':
-        file_slon = int(file_slon[1:]) # taking the leading zero out from solar longitude
-        # print(file_slon)
+    shower_name = input('Enter the abbreviation of the shower you\'d like to work with - select from the abbreviations: ARI, DSX, ETA, GEM, QUA, SDA: ').upper().strip()
+    # from here, the shower parser function should enter the clean file data folder and pick out the days the shower is active using specified solar longitude by a dictionary
 
-    else:
-        file_slon = int(file_slon)
-        # print(file_slon)
-    # if not satisfied, this step should be skipped for any file not within the specified range of solar longitudes based on the input shower
-    # should include somewhere here the 5 days before and after this range found below to calculate the average background flux for shower subtraction
-    if file_slon in input_slons:
-        
-        # print(shower_file)
-        shower_lmda, shower_beta, shower_vel = shower_parser(year, shower_folder_name, shower_file, shower_slon, shower_rads, shower_name, method)
-
-        full_lons.extend(shower_lmda)
-        full_lats.extend(shower_beta)
-        full_vels.extend(shower_vel)
-
-        # plots each day/solar longitude
-        # echo_plot(shower_lmda, shower_beta, year)
+    # list of important solar longitudes per shower from Brown et al. (2010)
+    shower_slon0 = {'ARI' : np.arange(62,99), 'DSX': np.arange(174,197), 'ETA' : np.arange(30, 66),
+                'GEM' : np.arange(240,273), 'QUA' : np.arange(232, 291), 'SDA' : np.arange(114, 164)}
     
-    else:
-        continue
+    # list of important solar longitudes per strong shower from MCB - Using this
+    shower_slon = {'ARI' : np.arange(73, 87), 'DSX': np.arange(169, 202), 'ETA' : np.arange(40, 50),
+                'GEM' : np.arange(257, 263), 'QUA' : np.arange(282, 284), 'SDA' : np.arange(118, 134)}
+    
+    # list of shower peak solar longitudes from MCB
+    shower_slon_peaks = {'ARI' : 81, 'DSX': 186, 'ETA' : 47,
+                'GEM' : 261, 'QUA' : 283, 'SDA' : 126}
 
-scaled_full_lons = scale(full_lons)
-print(full_lons, full_lats)
-# plots full shower duration
-echo_plot(scaled_full_lons, full_lats, full_vels, year, shower=shower_name, mode='shower')
+    # ordered lists of geocentric right ascension (alpha) and declination (delta) from Brown et al. (2010) and MCB (same numbers) - Using this
+    shower_rads = {'ARI' : [45.7, 25], 'DSX': [154.3, -1], 'ETA' : [337.9, -0.9],
+                'GEM' : [112.5, 32.1],'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3]}
+   
+    # get the solar longitudes of the showers from the filenames
 
-echo_3d_plot(scaled_full_lons, full_lats, full_vels, year, shower=shower_name, mode='shower')
+    # only from the files on days of when the shower is active
+    active_lons = []
+    active_lats = []
+    active_vels = []
 
-vel_histo(full_vels, year, method, shower=shower_name, mode='shower')
+    # only from the files 5 days before and after the shower is active; use this along with heat_map to generate a number density matrix for each day
 
-# convex hull call here?
+    outer_lons = []
+    outer_lats = []
+    outer_vels = []
+
+    # includes files of slon 5 days before and after the shower is active
+    full_lons = []
+    full_lats = []
+    full_vels = []
+
+    # array of solar longitudes of a shower based on user input
+    input_slons = shower_slon[shower_name]
+    min_slon, max_slon = min(input_slons), max(input_slons)
+
+    slons_before = min_slon - 5
+    slons_after = max_slon + 5
+
+    outer_slons = list(range(slons_before, min_slon)) +  list(range(max_slon + 1, slons_after + 1))
+    
+    full_slons = list(range(slons_before, slons_after + 1)) # copy of the list to be used as one containing echoes 5 days before and after the shower appears
+
+    print(input_slons)
+    print(outer_slons)
+    print(full_slons)
+
+    # collecting the shower files here
+    for shower_file in shower_folder:
+
+        if shower_file[0:4].upper() == 'FULL':
+            continue
+
+        file_slon = shower_file[11:14]
+        # print(file_slon)
+
+
+        if file_slon[0:2] == '00':
+            file_slon = int(file_slon[2]) # taking the leading zero out from solar longitude
+            # print(file_slon)
+
+
+        elif file_slon[0] == '0':
+            file_slon = int(file_slon[1:]) # taking the leading zero out from solar longitude
+            # print(file_slon)
+
+        else:
+            file_slon = int(file_slon)
+            # print(file_slon)
+        # if not satisfied, this step should be skipped for any file not within the specified range of solar longitudes based on the input shower
+        # should include somewhere here the 5 days before and after this range found below to calculate the average background flux for shower subtraction
+        if file_slon in full_slons:
+            
+            # collects coordinates of the shower files, along with velocities
+            shower_lmda, shower_beta, shower_vel = shower_parser(year, shower_folder_name, shower_file, shower_slon, shower_rads, shower_name, method)
+
+            # using these lists to calculate flux, which will be used for shower subtraction
+            full_lons.extend(shower_lmda)
+            full_lats.extend(shower_beta)
+            full_vels.extend(shower_vel)
+
+            # using these files to plot the echoes seen from the shower
+            if file_slon in input_slons:
+                active_lons.extend(shower_lmda)
+                active_lats.extend(shower_beta)
+                active_vels.extend(shower_vel)
+            
+            # using these to construct average sporadic number density matrices to subtract from the shower's number density matrix (heat map)
+            if file_slon in outer_slons:
+                outer_lons.extend(shower_lmda)
+                outer_lats.extend(shower_beta)
+                outer_vels.extend(shower_vel)
+
+            # plots each day/solar longitude
+            # echo_plot(shower_lmda, shower_beta, year)
+        
+        else:
+            continue
+    
+    # scaling longitudes 
+    scaled_active_lons = scale(active_lons)
+
+    scaled_outer_lons = scale(outer_lons) # could split this list into two - one for days before, one for days after
+
+    scaled_full_lons = scale(full_lons)
+
+
+
+    # plot of the active shower
+    h_shower = echo_plot(scaled_active_lons, active_lats, active_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
+
+    # plot of the sporadic background - take the background matrix from here
+    h_background = echo_plot(scaled_outer_lons, outer_lats, outer_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
+    # one density matrix for both 5 days before/after
+    # two density matrices for 5 days before, 5 days after
+
+    print(h_shower[0], h_background[0])
+
+    h_diff = h_shower[0] - h_background[0]
+    h_diff = np.clip(h_diff, 0, None)
+
+    h_lons, h_lats = h_shower[1], h_shower[2]
+
+    print(h_diff) # run this in echo plot? needs to be in the function
+    print(np.mean(h_diff)) # average is 0.029, check for negative numbers?
+
+    plt.figure(figsize=(10,5))
+    plt.imshow(h_diff.T, origin='lower', cmap='plasma', extent=[h_lons[0], h_lons[-1], h_lats[0], h_lats[-1]])
+
+    plt.colorbar(label='Shower Count Difference')
+    plt.xlabel('Ecliptic Longitude')
+    plt.ylabel('Ecliptic Latitude')
+    plt.gca().invert_xaxis()
+    
+    plt.title('Shower minus background density')
+    plt.show()
+
+    # effectively getting the same plot as before subtraction
+    # applying to 3d plot to see if there is a difference
+
+    # 3d plot of shower day echoes - create the convex hull around radiants that survive the 3 sigma test following background subtraction
+    echo_3d_plot(scaled_active_lons, active_lats, active_vels, year, shower=shower_name, mode='shower')
+
+    # 3d plot of background day echoes
+    echo_3d_plot(scaled_outer_lons, outer_lats, outer_vels, year, shower=shower_name, mode='shower')
+
+    # next would be to plot active days with counts = (active counts - outer counts)
+
+    # histogram of velocities
+    # vel_histo(full_vels, year, method, shower=shower_name, mode='shower') 
+    vel_histo(active_vels, year, method, shower=shower_name, mode='shower') 
+    vel_histo(outer_vels, year, method, shower=shower_name, mode='shower') 
+
+    # convex hull call here?
+
+    H_shower = voxel_map(scaled_active_lons, active_lats, active_vels, year)
+    H_background = voxel_map(scaled_outer_lons, outer_lats, outer_vels, year)
+
+
+    # print(np.size(H_shower[0]), np.size(H_background[0]))
+
+    H_diff = H_shower[0]  - H_background[0]
+
+    figure = plt.figure(figsize=(10,5))
+    ax = figure.add_subplot(projection='3d')
+
+    print(H_diff)
+
+    threshold = 15
+
+    new_voxels = H_diff > threshold # increase the threshold to make the plot a bit more strict to the shower
+
+    normalized = (H_diff - H_diff.min()) / (H_diff.max() - H_diff.min())
+    colors = plt.cm.plasma(normalized)
+
+    ax.voxels(new_voxels, facecolors=colors, edgecolor='k', alpha=0.7)
+
+    norm = plt.Normalize(vmin=H_diff.min(), vmax=H_diff.max())
+    mappable = cm.ScalarMappable(norm=norm, cmap='plasma')
+    figure.colorbar(mappable, ax=ax, shrink=0.6, label='Number of Meteors')
+
+    ax.set_xlabel('Ecliptic Longitude')
+    ax.set_ylabel('Ecliptic Latitude')
+    ax.set_zlabel('Geocentric Velocity (km/s)')
+    ax.set_title(f'Clean Meteor Sources scaled by geocentric velocity - measurements from {year}', fontsize=14)
+    plt.show()
+    
+
+    background_matrix(outer_lons, outer_lats, outer_vels, outer_slons, year, shower_name)
+
+    convex_hull(scaled_full_lons, full_lats, full_vels, scaled_active_lons, active_lats, active_vels, full_slons, year)
+    
