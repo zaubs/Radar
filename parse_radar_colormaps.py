@@ -1888,11 +1888,12 @@ def background_subtract(year, outer_lmda, outer_beta, outer_vel, name, method, s
     for filename in active_folder:
         file_path = os.path.join(active_folder_name, filename)
 
-        # backup the original file before modifying
-        try:
-            shutil.copy2(file_path, file_path + '.bak')
-        except Exception:
-            pass
+        # # backup the original file before modifying
+        # try:
+        #     shutil.copy2(file_path, file_path + '.bak')
+        #       check if this exists, if so do not make a new file
+        # except Exception:
+        #     pass
 
         kept_lines = []
 
@@ -2239,7 +2240,7 @@ if shower_isolate:
                 'GEM' : np.arange(240,273), 'QUA' : np.arange(232, 291), 'SDA' : np.arange(114, 164)}
     
     # list of important solar longitudes per strong shower from MCB with 5 day buffer both before and after the active shower days - Using this
-    shower_slon = {'ARI' : np.arange(52, 110), 'DSX': np.arange(164, 208), 'ETA' : np.arange(20, 77),
+    shower_slon = {'ARI' : np.arange(52, 110), 'DSX': np.arange(169, 202), 'ETA' : np.arange(20, 77),
                 'GEM' : np.arange(230, 284), 'QUA' : np.arange(265, 302), 'SDA' : np.arange(104, 175)}
     
     # list of shower peak solar longitudes from MCB
@@ -2366,21 +2367,39 @@ if shower_isolate:
 
     # plot of the sporadic background - take the background matrix from here
     h_background = echo_plot(scaled_outer_lons, outer_lats, outer_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
+    # print('mean:', np.mean(h_background))
     # one density matrix for both 5 days before/after
     # two density matrices for 5 days before, 5 days after
+
+    for i, array in enumerate(h_background):
+        print(i)
+        print('mean;', np.mean(h_background[0][i]))
+        # print('shape:', h_background[i].shape)
+        print(h_background)
+        background_avg = np.mean(h_background[0][i])
+
+        h_background[0][:] = background_avg
+    
+    print(h_background) # currently only sets the last array's average to all elements in the parent array 
+
+    background_avgs = np.mean(h_background[0], axis=1, keepdims=True)
+
+    new_background = np.broadcast_to(background_avgs, h_background[0].shape)
+    print(new_background)
 
     # plot of radiants after new subtraction method
     h_new = echo_plot(scaled_new_lons, new_lats, new_vel, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
 
-    print(h_shower[0], h_background[0])
+    # print(h_shower[0], h_background[0])
 
-    h_diff = h_shower[0] - h_background[0]
+    h_diff = h_shower[0] - new_background
+    # make all elements of h_background an average of the number distribution then subtract
     h_diff = np.clip(h_diff, 0, None)
 
     h_lons, h_lats = h_shower[1], h_shower[2]
 
-    print(h_diff) # run this in echo plot? needs to be in the function
-    print(np.mean(h_diff)) # average is 0.029, check for negative numbers?
+    # print(h_diff) # run this in echo plot? needs to be in the function
+    # print(np.mean(h_diff)) # average is 0.029, check for negative numbers?
 
     plt.figure(figsize=(10,5))
     plt.imshow(h_diff.T, origin='lower', cmap='plasma', extent=[h_lons[0], h_lons[-1], h_lats[0], h_lats[-1]])
@@ -2414,10 +2433,14 @@ if shower_isolate:
     H_shower = voxel_map(scaled_active_lons, active_lats, active_vels, year)
     H_background = voxel_map(scaled_outer_lons, outer_lats, outer_vels, year)
 
+    Background_avgs = np.mean(H_background[0], axis=1, keepdims=True)
+
+    new_Background = np.broadcast_to(Background_avgs, H_background[0].shape)
+    print(new_Background)
 
     # print(np.size(H_shower[0]), np.size(H_background[0]))
 
-    H_diff = H_shower[0]  - H_background[0]
+    H_diff = H_shower[0]  - new_Background
 
     # instead of subtracting the exact background point from the shower data, maybe take any bin out with counts > 0 within a given radius of any nonzero bin from the background
     # should write a new function for this
