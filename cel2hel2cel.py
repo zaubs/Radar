@@ -1,5 +1,6 @@
 
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 
 def getvec(ra, dec):
@@ -11,9 +12,9 @@ def getvec(ra, dec):
 
     dtr = np.pi/180
 
-    v[0] = -np.cos(dtr*dec)*np.sin(dtr*ra)
-    v[1] = np.cos(dtr*dec)*np.cos(dtr*ra)
-    v[2] = np.sin(dtr*dec)
+    v[1] = np.cos(dtr*dec)*np.sin(dtr*ra) # y
+    v[0] = np.cos(dtr*dec)*np.cos(dtr*ra) # x # flipped x and y
+    v[2] = np.sin(dtr*dec) # z
 
     return v
 
@@ -24,8 +25,8 @@ def getangle(vec):
 
     rtd = 180/np.pi
 
-    a = rtd*atan(vec[1], -vec[0])
-    b = rtd*np.arcsin(np.clip(vec[2], -1.0, 1.0))
+    a = rtd*math.atan2(vec[1], vec[0])
+    b = rtd*np.arcsin(vec[2])
 
     return a, b
 
@@ -58,8 +59,8 @@ def atan(x, y):
         else:
             z = -np.pi
 
-    if z < 0:
-        z += 2* np.pi # 3 so in range from [0,2pi]
+    # if z < 0:
+    #     z += 2* np.pi # 3 so in range from [0,2pi]
 
     return z
 
@@ -81,16 +82,19 @@ def cel2hel(cel, sl, q=23.55):
     w = np.zeros(3)
     w[0] = cel[0]
     w[1] = cel[1] * np.cos(dtr * q) + cel[2] * np.sin(dtr * q)
-    w[2] = cel[2] * np.cos(dtr * q) - cel[1] * np.sin(dtr * q)
+    w[2] = -cel[1] * np.sin(dtr * q) + cel[2] * np.cos(dtr * q) 
 
     # rotation by solar longitude sl
     hel = np.zeros(3)
-    hel[0] = -w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
-    hel[1] =  w[0] * np.sin(dtr * sl) - w[1] * np.cos(dtr * sl)
+    # hel[0] = -w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
+    # hel[1] =  w[0] * np.sin(dtr * sl) - w[1] * np.cos(dtr * sl)
+    # hel[2] =  w[2]
+    hel[0] =  w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
+    hel[1] =  w[0] * np.sin(dtr * sl) + w[1] * np.cos(dtr * sl)
     hel[2] =  w[2]
 
     return hel
-# Main function call
+
 
 def hel2cel(hel, sl, q=23.55):
     """
@@ -107,49 +111,70 @@ def hel2cel(hel, sl, q=23.55):
 
     dtr = np.pi / 180
 
+    # reversing the solar longitude rotation
     w = np.zeros(3)
-    w[0] =  hel[1] * np.sin(dtr * sl) - hel[0] * np.cos(dtr * sl)
-    w[1] = -hel[0] * np.sin(dtr * sl) - hel[1] * np.cos(dtr * sl)
+    w[0] = hel[0] * np.cos(dtr * sl) + hel[1] * np.sin(dtr * sl) 
+    w[1] = -hel[0] * np.sin(dtr * sl) + hel[1] * np.cos(dtr * sl)
     w[2] =  hel[2]
 
+    # revsersing the axis tilt
     cel = np.zeros(3)
     cel[0] =  w[0]
     cel[1] =  w[1] * np.cos(dtr * q) - w[2] * np.sin(dtr * q)
-    cel[2] =  w[2] * np.cos(dtr * q) + w[1] * np.sin(dtr * q)
+    cel[2] =  w[1] * np.sin(dtr * q) + w[2] * np.cos(dtr * q)
     return cel
 
-a_list, b_list = [0, 90, 180, 270], [0, 90,180,270]  # ras, decs
-sl, q = 261.0, 23.5  # solar longitude, obliquity
+def slon_corr(sl, c, d, q=23.55):
 
-plt.figure(figsize=(10,8))
+    dtr = np.pi/180
 
-for a, b in zip(a_list,b_list):
-    v_cel      = getvec(a, b)
-    v_hel      = cel2hel(v_cel, sl, q)
-    l_comp, b_comp = getangle(v_hel)
-    v_cel_back = hel2cel(v_hel, sl, q)
-    a_back, b_back = getangle(v_cel_back)
+    dec = np.sin((sl - c) * dtr) * q + d * np.cos(q * np.sin(sl * dtr) * dtr)
+    if dec > 90:
+        dec = 90 - (dec - 90)
 
-    print(f'Original : a={a:.4f}  b={b:.4f}')
-    print(f'Computed: lmda={l_comp:.4f}, beta={b_comp:.4f}')
-    print(f'Recovered: a={a_back:.4f}  b={b_back:.4f}')
+    ra = (sl - c) + d * np.sin(q * np.sin(-sl * dtr) * dtr)
+    if ra > 360:
+        ra = ra - 360
+    if ra < 0:
+        ra = ra + 360
 
-    plt.scatter(l_comp, b_comp, label=f'RA={a}, Dec={b}')
+    return ra, dec
 
-plt.scatter(270, 30, color='k')
+def main():
+    q = 23.55
+    ra  = 112.5
+    dec = 32.1
+    sl  = 261
 
-plt.title('Heliocentric coordinates translated from celestial RA/Dec')
+    dtr = np.pi/180
 
-plt.xlabel('Heliocentric Longitude (Lambda)')
-plt.ylabel('Heliocentric Latitude (Beta)')
+    print(f'{ra} {dec}')
 
-plt.grid()
-plt.legend()
-plt.show()
+    # convert ra/dec to celestial vector, then to heliocentric
+    cel = getvec(ra, dec)
+    hel = cel2hel(cel, sl, q)
+    c, d = getangle(hel)
+    print(f'lon: {c}  lat: {d}')
 
-# lat/lon list next
-v_cel      = getvec(a, b)
-v_hel      = cel2hel(v_cel, sl, q)
-l_comp, b_comp = getangle(v_hel)
-v_cel_back = hel2cel(v_hel, sl, q)
-a_back, b_back = getangle(v_cel_back)
+    
+    # solar longitude correction
+    ra, dec = slon_corr(sl, c, d)
+
+    print(f'Ra: {ra} Dec: {dec}')
+
+    
+    # cel = getvec(ra, dec)
+    # hel = cel2hel(cel, sl, q)
+    # c, d = getangle(hel)
+    # print(f'lon: {c}  lat: {d}')
+
+    
+    # convert heliocentric angles back to celestial
+    hel = getvec(c, d)
+    cel = hel2cel(hel, sl, q)
+    ra, dec = getangle(cel)
+    print(f'{ra} {dec}')
+
+# Main function call
+if __name__ == '__main__':
+    main()
