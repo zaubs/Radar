@@ -31,6 +31,10 @@ from scipy.spatial import ConvexHull
 import plotly.graph_objects as go
 
 
+# My imported functions
+from cel2hel2cel import *
+
+
 # This function is used to go through each meteor file for a chose year; the raw orbit data must exist in the file already
     # Might make this a class to do multiple tests at once for different filtering criteria; need to review classes first
 
@@ -163,14 +167,22 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                 # station measurement error
                 sdel = params[123]
                 
-                # turning radiant into heliocentric coordinates
-                # v_cel      = getvec(float(alpha_g), float(delta_g))
-                # v_hel      = cel2hel(v_cel, float(sl))
-                # l_comp, b_comp = getangle(v_hel) # add these to dict, pull through grab_coords and call when using echo_plot
-                l_comp, b_comp = 0, 0
+                # turning radiant into heliocentric coordinates - I want to use this to get locations of the showers in ecl lon/lat
+                v_cel      = getvec(float(alpha_g), float(delta_g))
+                v_hel      = cel2hel(v_cel, float(slon))
+                l_comp, b_comp = getangle(v_hel) # run through solar longitude correction
 
-                corrected_l_comp = str(round(float(l_comp) - float(slon), 2))
-                                
+                # solar longitude correction for c2h coordinates : this mirrors the distribution so might be applied one too many times
+                # alpha, delta = slon_corr(float(slon), l_comp, b_comp)
+
+                # v_cel      = getvec(float(alpha), float(delta))
+                # v_hel      = cel2hel(v_cel, float(slon))
+                # l_comp, b_comp = getangle(v_hel) # add these to dict, pull through grab_coords and call when using echo_plot
+                
+                # Margaret said her function should be converting to corrected longitude already
+                # corrected_l_comp = str(round(float(l_comp) - float(slon), 2))
+                corrected_l_comp = str(round(float(l_comp) - 90, 2))
+
                 # filtering function calls
                 percent_check, overlap, percent_diff = vel_check(vel_TimeofFlight, vel_PTN0, del_vel_TimeofFlight, del_vel_PTN0, vel_geo) # using the function to check if the velocities agree within 5%
                 # list of boolean value, and percentage
@@ -234,7 +246,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                     # want scaled longitudes for plotting
                     parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo,
                                           "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                          "Cel2Hel Longitude" : corrected_l_comp, "Cel2Hel Latitude" : b_comp}
+                                          "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
                 
                 else:
                     # CASE: All four filters + Duplicate check applied
@@ -246,7 +258,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                                                     "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff, "Interferometry Error": int_error, "Solid Angle Error": solid_angle_error, 
                                                     "Station Measurement Error": sdel, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Cel2Hel Longitude" : corrected_l_comp, "Cel2Hel Latitude" : b_comp}
+                                                    "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
 
                     # # CASE: velocity check only
                     elif method == 'vel': # for 2025, 652,372 events are returned from AND condition below
@@ -267,7 +279,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Interferometry Error": int_error,
                                                 "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                 "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                "Cel2Hel Longitude" : corrected_l_comp, "Cel2Hel Latitude" : b_comp}                
+                                                "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}                
                     
                     # CASE: Radiant Location Check only
                     elif method == 'angle':
@@ -277,7 +289,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Solid Angle Error": solid_angle_error,
                                                 "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Cel2Hel Longitude" : corrected_l_comp, "Cel2Hel Latitude" : b_comp}                
+                                                    "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}                
                     
                     #  CASE: Station Measurement Check only
                     elif method == 'station':
@@ -287,7 +299,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Station Measurement Error": sdel,
                                                 "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Cel2Hel Longitude" : corrected_l_comp, "Cel2Hel Latitude" : b_comp}
+                                                    "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
                     
 
                     # CASE: velocity and interferometry check only
@@ -298,7 +310,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff,
                                                 "Interferometry Error": int_error, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, 
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Cel2Hel Longitude" : corrected_l_comp, "Cel2Hel Latitude" : b_comp}
+                                                    "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
                         
                     # CASE: velocity, interferometry and solid angle check only
                     elif method == 'vel and int and angle' or method.upper() == 'VIA':
@@ -308,7 +320,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff,
                                                     "Interferometry Error": int_error, "Solid Angle Error": solid_angle_error, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, 
                                                         "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                        "Cel2Hel Longitude" : corrected_l_comp, "Cel2Hel Latitude" : b_comp}
+                                                        "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
 
         clean_data = len(parent_dict)
 
@@ -452,7 +464,7 @@ def station_check(num_stations, sdel):
         return False 
 
 
-def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0, bounds=None):
+def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0, bounds=None, shower_info=None):
     '''
     put meteor distribution into a voxel (cubic space)
     voxels defined by buffer (5 degrees solar longitude) - I used copliot to do this step, I've never created voxels in a 3d plot before
@@ -467,6 +479,7 @@ def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0,
     lmda = np.asarray(lmda)
     beta = np.asarray(beta)
     vels = np.asarray(vels)
+    # dates = np.asarray(dates)
 
     
     if bounds != None:
@@ -483,6 +496,7 @@ def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0,
         lmda = lmda[mask]
         beta  = beta[mask]
         vels = vels[mask]
+        # dates = dates[mask]
 
     # avoid zero-range bins
     eps = 1e-6
@@ -526,66 +540,66 @@ def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0,
 
     active_folder = os.listdir(active_folder_name)
 
-    for filename in active_folder:
+    # for filename in active_folder:
     
-        file_path = os.path.join(active_folder_name, filename)
+    #     file_path = os.path.join(active_folder_name, filename)
 
-        voxel_meteors = {} # each voxel generated is a key to the meteors found within its borders
+    #     voxel_meteors = {} # each voxel generated is a key to the meteors found within its borders
 
-        kept_lines = []
+    #     kept_lines = []
 
-        with open(file_path, 'r') as f:
+    #     with open(file_path, 'r') as f:
 
-            for line in f:
+    #         for line in f:
 
-                line = line.strip()
-                params = line.split()
+    #             line = line.strip()
+    #             params = line.split()
 
-                # keep non-data/header lines
-                if params == [] or params[0][0] != '2':
-                    kept_lines.append(line)
-                    continue
+    #             # keep non-data/header lines
+    #             if params == [] or params[0][0] != '2':
+    #                 kept_lines.append(line)
+    #                 continue
 
-                date = params[0]
-                time = params[1]
+    #             date = params[0]
+    #             time = params[1]
 
-                active_lmda = float(params[3])
-                active_beta = float(params[4])
-                active_vel = float(params[11])
+    #             active_lmda = float(params[3])
+    #             active_beta = float(params[4])
+    #             active_vel = float(params[11])
 
-                # find which voxel bin this meteor falls into (1-indexed)
-                i = np.digitize(active_lmda, edges[0]) - 1
-                j = np.digitize(active_beta, edges[1]) - 1
-                k = np.digitize(active_vel,  edges[2]) - 1
+    #             # find which voxel bin this meteor falls into (1-indexed)
+    #             i = np.digitize(active_lmda, edges[0]) - 1
+    #             j = np.digitize(active_beta, edges[1]) - 1
+    #             k = np.digitize(active_vel,  edges[2]) - 1
 
-                # print('i', i, 'j', j, 'k', k)
+    #             # print('i', i, 'j', j, 'k', k)
 
-                # clamp to valid range [0, bins-1] — digitize can return out-of-range for edge values
-                i = np.clip(i, 0, bins[0] - 1)
-                j = np.clip(j, 0, bins[1] - 1)
-                k = np.clip(k, 0, bins[2] - 1)
-                # print('i', i, 'j', j, 'k', k)
+    #             # clamp to valid range [0, bins-1] — digitize can return out-of-range for edge values
+    #             i = np.clip(i, 0, bins[0] - 1)
+    #             j = np.clip(j, 0, bins[1] - 1)
+    #             k = np.clip(k, 0, bins[2] - 1)
+    #             # print('i', i, 'j', j, 'k', k)
 
-                voxel_key = (i, j, k)
+    #             voxel_key = (i, j, k)
 
-                # only keep meteors that fall in an occupied voxel
-                if voxels[i, j, k]:
-                    if voxel_key not in voxel_meteors:
-                        voxel_meteors[voxel_key] = []
-                    voxel_meteors[voxel_key].append({
-                        'lmda': active_lmda,
-                        'beta': active_beta,
-                        'vel':  active_vel,
-                        'Meteor': date + time
-                    })
+    #             # only keep meteors that fall in an occupied voxel
+    #             if voxels[i, j, k]:
+    #                 if voxel_key not in voxel_meteors:
+    #                     voxel_meteors[voxel_key] = []
+    #                 voxel_meteors[voxel_key].append({
+    #                     'lmda': active_lmda,
+    #                     'beta': active_beta,
+    #                     'vel':  active_vel,
+    #                     'Meteor': date + time
+    #                 })
 
-    # inspect results
-    for voxel_key, meteors in voxel_meteors.items():
-        i, j, k = voxel_key
-        print(f'Voxel {voxel_key} | lmda:[{edges[0][i]:.1f}-{edges[0][i+1]:.1f}] '
-            f'beta:[{edges[1][j]:.1f}-{edges[1][j+1]:.1f}] '
-            f'vel:[{edges[2][k]:.1f}-{edges[2][k+1]:.1f}] '
-            f'| {len(meteors)} meteors')
+    # # inspect results
+    # for voxel_key, meteors in voxel_meteors.items():
+    #     i, j, k = voxel_key
+    #     print(f'Voxel {voxel_key} | lmda:[{edges[0][i]:.1f}-{edges[0][i+1]:.1f}] '
+    #         f'beta:[{edges[1][j]:.1f}-{edges[1][j+1]:.1f}] '
+    #         f'vel:[{edges[2][k]:.1f}-{edges[2][k+1]:.1f}] '
+    #         f'| {len(meteors)} meteors')
 
     # draw voxels in real-world coordinate space
     ax.voxels(X, Y, Z, voxels, facecolors=facecolors, edgecolor='k')
@@ -806,6 +820,8 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
     Shower mode is best worked on its own - mainly using this mode to collect the number density matrices for days before/after shower activity
     '''
 
+    figure, ax = plt.subplots(figsize=(10,5))
+
     lmda = np.asarray(lmda, dtype=float)
     beta  = np.asarray(beta, dtype=float)
 
@@ -820,15 +836,16 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
         
         lmda = lmda[mask]
         beta  = beta[mask]
-        # ax.set_xlim(lon_bounds[0], lon_bounds[1])
-        # ax.set_ylim(lat_bounds[0], lat_bounds[1])
-
-    figure, ax = plt.subplots(figsize=(10,5))
+        ax.set_xlim(lon_bounds[0], lon_bounds[1])
+        ax.set_ylim(lat_bounds[0], lat_bounds[1])
+        
 
     h = ax.hist2d(lmda, beta, bins=200, cmap='plasma') # should save files by bin size now for different runs
 
     binsize = len(h[0])
     # print(binsize)
+
+    
 
     # print(h[0]) # counts per bin 
 
@@ -848,9 +865,9 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 
     # aiming to have something like this, but I want to mask data points outside these bounds instead and set the limits to the regular bounds
 
+    # ax.set_ylim(-60, 90)
+    # ax.set_xlim(-150, 150)
     
-    ax.set_ylim(-60, 90)
-    ax.set_xlim(-150, 150)
     # ax.xaxis.set_major_locator(plt.FixedLocator([-90, 0, 90, 180, 270, 360])) # defines tick marks on the x axis
     # ax.xaxis.set_major_formatter(plt.FuncFormatter(relabel)) # re labels the x axis tick marks to show we are labeled at 270 degrees
 
@@ -2067,6 +2084,7 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
 
     meteor_count = 0
 
+
     # parses and saves file data of shower data
     if slon_status == 'active':
 
@@ -2121,37 +2139,16 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
                     shower_alpha, shower_delta = radiants[name] # coordinates on day of the peak
                     alpha_drift, delta_drift = radiant_drifts[name]
 
-                    # alpha, delta correction for ra/dec drift per solar longitude
-                    # active_slon = file_slon
-
-                    # corrects ra/dec if the shower solar longitude is not at its peak
-                    if file_slon != slon_peak:
-
-                        alpha += day_gap*alpha_drift
-                        delta += day_gap*delta_drift
-
-                        shower_alpha += day_gap*alpha_drift
-                        shower_delta += day_gap*delta_drift
-
-                        # if file_slon < slon_peak: # days before the peak of the shower
-                        # elift file_slon > slon_peak: # days after the peak of the shower
-                    
-                    # converting to longitude and latitude
-                    # meteor_hel = cel2hel(file_slon, alpha, delta)
+                    # C2H conversion for the center of the shower on it's peak day
+                    # is i want to impliment drift per day, having the c2h function calls here resets the shower location for each new day 
+                    # this way the computed drift does not diverge
                     shower_cel = getvec(shower_alpha, shower_delta)
                     shower_hel = cel2hel(shower_cel, slon_peak)
-
-                    # meteor_beta, meteor_lmda = getangle(meteor_hel)
                     shower_lmda, shower_beta = getangle(shower_hel)
 
-                    # only plotting the echoes that fall within 10 degrees of the shower radiant
-                    # will check if this value is a good range by next meeting
-                    # if abs(shower_alpha - alpha) <= 5 and abs (shower_delta - delta) <= 5: # this gives cartesian boundary
-                    
-
-                    # if abs(shower_lmda - lmda) <= 5 and abs(shower_beta - beta) <= 5:
-                    # circular distance from the source
-                    if np.sqrt((shower_alpha - alpha)**2 + (shower_delta - delta)**2) <= 5:
+                    # C2H conversion for the current meteor
+                    # or use its given lat/lon and compare to the location of the shower
+                    if np.abs(shower_lmda - lmda) <= 5 and np.abs(shower_beta - beta) <= 5:
                         date_time.append(f'{date} {time}')
                         shower_lons.append(lmda)
                         shower_lats.append(beta)
@@ -2164,11 +2161,58 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
                         active_file.write(f'{line}\n') # copies the file to a new directory of shower meteors
 
                         # only saves meteors close to the shower on active days
-                        corrected_coordinates[date + time] = {"RA" : alpha, "Dec" : delta}
+                        # corrected_coordinates[date + time] = {"lmda_h" : lmda, "beta_h" : beta}
 
                         meteor_count += 1
 
-                        # counter here for header?
+                    # meteor_hel = cel2hel(file_slon, alpha, delta)
+                    # meteor_beta, meteor_lmda = getangle(meteor_hel)
+                    
+
+                    # alpha, delta correction for ra/dec drift per solar longitude
+                    # active_slon = file_slon
+
+                    # corrects ra/dec if the shower solar longitude is not at its peak
+                    # if file_slon != slon_peak:
+
+                    #     alpha += day_gap*alpha_drift
+                    #     delta += day_gap*delta_drift
+
+                    #     shower_alpha += day_gap*alpha_drift
+                    #     shower_delta += day_gap*delta_drift
+
+                    #     # if file_slon < slon_peak: # days before the peak of the shower
+                    #     # elift file_slon > slon_peak: # days after the peak of the shower
+                    
+                    
+                    
+
+                    # # only plotting the echoes that fall within 10 degrees of the shower radiant
+                    # # will check if this value is a good range by next meeting
+                    # # if abs(shower_alpha - alpha) <= 5 and abs (shower_delta - delta) <= 5: # this gives cartesian boundary
+                    
+
+                    # # if abs(shower_lmda - lmda) <= 5 and abs(shower_beta - beta) <= 5:
+                    # # circular distance from the source
+                    # if np.sqrt((shower_alpha - alpha)**2 + (shower_delta - delta)**2) <= 5:
+                    #     # print('Computed lon: ', shower_lmda, 'Computed lat: ', shower_beta)
+                    #     date_time.append(f'{date} {time}')
+                    #     shower_lons.append(lmda)
+                    #     shower_lats.append(beta)
+                    #     shower_vels.append(velg)
+
+                    #     # shower_lons.append(meteor_lmda)
+                    #     # shower_lats.append(meteor_beta)
+                    #     # shower_vels.append(velg)
+
+                    #     active_file.write(f'{line}\n') # copies the file to a new directory of shower meteors
+
+                    #     # only saves meteors close to the shower on active days
+                    #     corrected_coordinates[date + time] = {"RA" : alpha, "Dec" : delta}
+
+                    #     meteor_count += 1
+
+                    #     # counter here for header?
     
         return shower_lons, shower_lats, shower_vels, corrected_coordinates, meteor_count, date_time
 
@@ -2360,7 +2404,136 @@ def background_subtract(year, outer_lmda, outer_beta, outer_vel, name, method, s
 
     return shower_lmda, shower_beta, shower_vel  
 
-def voxel_subtract(year, shower_counts, background_counts, name, method, slon_status='active'):
+def voxel_organize(H, edges, shower_dict, year):
+    '''
+    Go over each voxel and log which specific meteors are in them
+    Hope to use this in voxel subtract - any meteors in a voxel set to zero should be removed from the data set
+
+    '''
+
+    voxel_lmda = edges[0]
+    voxel_beta = edges[1]
+    voxel_vels = edges[2]
+
+    voxel_dict = {} # store each meteor in here keyed by voxel boundaries
+    # key = lon {n} lat {j} vel {i}
+    # value = date of meteor
+
+    # iterate over each meteor, check which voxel is in, do the voxel count test and if this fails, delete this meteor and clear the voxel
+    # for d, nd in shower_dict.items():
+
+    #     l, b, v = nd['lmda'], nd['beta'], nd['vel'] 
+
+    #     for i, matrix in enumerate(H): 
+            
+    #         # stops from defining an index out of bounds of the velocity bins
+    #         if i + 1 >= len(voxel_vels):
+    #             continue 
+
+    #         vel_coord, vel_coord1 = voxel_vels[i], voxel_vels[i+1]
+    #         # print(vel_coord)
+
+    #         # print(shower_counts_copy[i])
+
+    #         for j in range(len(H[i])): # goes over each row of voxels in the i'th shower matrix
+                
+    #             if j+1 >= len(voxel_beta):
+    #                 continue
+
+    #             row = H[i][j]
+
+    #             beta_coord, beta_coord1 = voxel_beta[j], voxel_beta[j+1]
+
+    #             # print(beta_coord)
+
+    #             for n in range(len(row)):
+    #                 if n+1 >= len(voxel_lmda):
+    #                     continue
+
+    #                 lmda_coord, lmda_coord1 = voxel_lmda[n], voxel_lmda[n+1]
+    #                 # print(lmda_coord)
+    #                 counts = row[n]
+    #                 # print(counts, 3*sigma) # this should be the specific voxel
+    #                 # print(counts)
+
+    #                 if lmda_coord < l < lmda_coord1 and beta_coord < b < beta_coord1 and vel_coord < v and vel_coord1:
+    #                     key = f"Lon {n} Lat {j} Vel {i}"
+    #                     if key not in voxel_dict.keys():
+
+    #                         voxel_dict[key] = {'dates' : []}
+
+    #                     voxel_dict[key]['dates'].append(d)
+    
+   
+    for i, matrix in enumerate(H): 
+        
+        # stops from defining an index out of bounds of the velocity bins
+        # if i + 1 >= len(voxel_vels):
+        #     continue 
+
+        vel_coord, vel_coord1 = voxel_vels[i], voxel_vels[i+1]
+        # print(vel_coord)
+
+        # print(shower_counts_copy[i])
+
+        for j in range(len(H[i])): # goes over each row of voxels in the i'th shower matrix
+            
+            # if j+1 >= len(voxel_beta):
+            #     continue
+
+            row = H[i][j]
+
+            beta_coord, beta_coord1 = voxel_beta[j], voxel_beta[j+1]
+
+            # print(beta_coord)
+
+            for n in range(len(row)):
+                # if n+1 >= len(voxel_lmda):
+                #     continue
+
+                lmda_coord, lmda_coord1 = voxel_lmda[n], voxel_lmda[n+1]
+                # print(lmda_coord)
+                counts = row[n]
+                # print(counts, 3*sigma) # this should be the specific voxel
+                # print(counts)
+
+                key = f"Lon {n} Lat {j} Vel {i}" # indicies for the iterated voxel
+
+                if key not in voxel_dict.keys():
+
+                    voxel_dict[key] = {'dates' : [], 'lon bounds' : [lmda_coord, lmda_coord1],
+                                       'lat bounds' : [beta_coord, beta_coord1], 'vel bounds' : [vel_coord, vel_coord1]}
+
+
+    # # # the lists for each voxel is created above, now time to iterate over each meteor and find out which voxel to put it in
+    # for d, nd in shower_dict.items():
+
+    #     l, b, v = float(nd['lmda']), float(nd['beta']), float(nd['vel'])
+    #     print(l,b,v)
+
+    #     for value in voxel_dict.values():
+
+    #         dates = value['dates']
+    #         lmdas = value['lon bounds']
+    #         betas = value['lat bounds']
+    #         vels = value['vel bounds']
+    #         print(lmdas, betas, vels)
+
+    #         # this does not work for some odd reason; will trouble shoot soon
+    #         if float(lmdas[0]) < l < float(lmdas[1]) and float(betas[0]) < b < float(betas[1]) and float(vels[0]) < v < float(vels[1]):
+
+    #             voxel_dict[key]['dates'].append(d)
+
+    # for v in voxel_dict.values():
+    #     dates = v['dates']
+    #     print(dates)
+    
+    return voxel_dict # should contain keys of each voxel and which meteors can be found in its boundaries
+
+    #                     voxel_dict[f'Boundaries: ({lmda_coord}, {lmda_coord1}), ({beta_coord}, {beta_coord}), ({vel_coord}, {vel_coord})'] = {'date' : d, 'lambda' : l, 'beta' : b, 'vel' : v}
+
+
+def voxel_subtract(edges, shower_dict, voxel_dict, year, shower_counts, background_counts, name, method, slon_status='active'):
     '''
     The 3d version of the above background subtraction function to be applied to voxel plots
     any shower voxel that has less counts than 3 times the st dev of the 2d plane it is in will be removed
@@ -2378,6 +2551,8 @@ def voxel_subtract(year, shower_counts, background_counts, name, method, slon_st
     shower_lmda = []
     shower_beta = []
     shower_vel = []
+
+    removed_voxels = []
 
     import shutil # for backing up files that are changed based on shower subtraction methods
 
@@ -2401,39 +2576,182 @@ def voxel_subtract(year, shower_counts, background_counts, name, method, slon_st
     #                 continue
 
     # both shower counts and background counts are 3d arrays, with each 2d array being 9x9 matrices
+    
 
     shower_counts_copy = shower_counts.copy()
 
     num_removed = 0
     num_left = 0
+    init_len = len(shower_dict)
 
-    for i, matrix in enumerate(background_counts): # should be going over each matrix creating the 3d array
+    # lmda_list  = lmda.copy().tolist()
+    # beta_list  = beta.copy().tolist()
+    # vels_list  = vels.copy().tolist()
+    # dates_list = dates.copy()
 
+    # voxel coordinates
+
+    voxel_lmda = edges[0]
+    voxel_beta = edges[1]
+    voxel_vels = edges[2]
+
+    
+
+
+    keys_to_remove = set()
+
+    # iterate over each meteor, check which voxel is in, do the voxel count test and if this fails, delete this meteor and clear the voxel
+    # for d, nd in shower_dict.items():
+
+    #     l, b, v = nd['lmda'], nd['beta'], nd['vel']
+
+    # goes over each background plane of lat/lon scaled by velocity - i corresponds to velocity index
+    for i, matrix in enumerate(background_counts): 
+        
+        # stops from defining an index out of bounds of the velocity bins
+        if i + 1 >= len(voxel_vels):
+            continue # does this kill the loop? 
+
+        mean = np.mean(matrix)
         sigma = np.std(matrix) # st dev of the slab of voxels' counts
         # print(sigma)
 
+        vel_coord, vel_coord1 = voxel_vels[i], voxel_vels[i+1]
+        # print(vel_coord)
+
         # print(shower_counts_copy[i])
 
+        # iterates over each corresponding row inthe shower data
         for j in range(len(shower_counts_copy[i])): # goes over each row of voxels in the i'th shower matrix
+            
+            if j+1 >= len(voxel_beta):
+                continue
 
             row = shower_counts_copy[i][j]
 
+            beta_coord, beta_coord1 = voxel_beta[j], voxel_beta[j+1]
+
+            # print(beta_coord)
+
+
             for n in range(len(row)):
+                if n+1 >= len(voxel_lmda):
+                    continue
+
+                lmda_coord, lmda_coord1 = voxel_lmda[n], voxel_lmda[n+1]
+                # print(lmda_coord)
                 counts = row[n]
                 # print(counts, 3*sigma) # this should be the specific voxel
 
-                if counts < sigma:
+                if 0.0 < counts < 3*sigma:
+                    print(counts, sigma, f'found in bin lon {n} lat {j} vel {i}')
                     shower_counts_copy[i][j][n] = 0
-                    num_removed += 1
+                    num_removed += counts
+                    # the main lists should contain where the removed meteors are roughly found in the defined radiant space
+                    if [[lmda_coord, lmda_coord1], [beta_coord, beta_coord1], [vel_coord, vel_coord1]] not in removed_voxels:
+                        removed_voxels.append([[lmda_coord, lmda_coord1], [beta_coord, beta_coord1], [vel_coord, vel_coord1]])
+                    # shower_lmda.append([lmda_coord, lmda_coord1])
+                    # shower_beta.append([beta_coord, beta_coord1])
+                    # shower_vel.append([vel_coord, vel_coord1])
+
+                    # if i add lists of the voxel coordinates to bigger lists and go over each one, I can find out in seperat loop which meteors fall there
+
 
                 else:
-                    num_left += 1
+                    num_left += counts
+
+                # for d, nd in shower_dict.items(): # where the loop was when it was deleting every event
+                # # i think this deletes everything because it goes over every meteor in the dictionary while set boundaries for voxels are defined
+                # # so when new voxels are defined, this loop is ran over again and the coordinates that fit within them are deleted
+                # # if this is done each time for every voxel it should remove everything; maybe move the dictionary loop outside the voxel check
+
+                #     l, b, v = nd['lmda'], nd['beta'], nd['vel']
+
+                #     # print('Boundaries: ', lmda_coord, lmda_coord1, beta_coord, beta_coord1, vel_coord, vel_coord1)
+                #     # print('Current coordinates: ', l, b, v)
+                    
+                #     if lmda_coord < l < lmda_coord1 and beta_coord < b < beta_coord1 and vel_coord < v < vel_coord1:
+                #         # shower_lmda.append(l)
+                #         # if 0.0 < counts < sigma:
+                #         #     # print(counts)
+                #         #     shower_counts_copy[i][j][n] = 0
+                #             # num_removed += counts
+                #         print('Deleted')
+                            
+                #         # filtered_lmda.remove(l)
+                #         # filtered_beta.remove(b)
+                #         # filtered_vels.remove(v)
+                #         # filtered_dates.remove(d)
+                #         # print(l, b, v, d, 'removed')
+                #         keys_to_remove.add(d) # maybe use i, j and n as coordinates instead? will have to group them differently to dates somehow - could build a dictionary before or within this function
+                #         # if meteor falls in this voxel
+                #             # remove meteor and day
+
+
     
 
+    # filtered_lmda  = lmda_list
+    # filtered_beta  = beta_list
+    # filtered_vels  = vels_list
+    # filtered_dates = dates_list
+    # print(len(shower_lmda)) # this should not always be equal to or less than num_removed, since removed voxels might have a count of zero
+    
+    voxel_meteors = 0
+    # print(len(shower_dict))
+
+    new_dict = shower_dict.copy()
+    removed_dict = {}
+
+    print('Num of voxels that have been emptied after the count check', len(removed_voxels)) # length is correct
+    print('Num of counts removed: ', num_removed)
+    
+    # for sl, sb, sv in zip(shower_lmda, shower_beta, shower_vel):
+    print('Num of meteors before count check:', len(shower_dict))
+    # goes over each stored voxel that was emptied
+    for vox in removed_voxels:
+
+        sl, sb, sv = vox[0], vox[1], vox[2]
+
+        l_min, l_max = sl[0], sl[1]
+        b_min, b_max = sb[0], sb[1]
+        v_min, v_max = sv[0], sv[1] # the very last entry of velocities ends up being an entry from latitudes for some reason
+
+
+        # goes over each meteor and checks if it lies in the current voxel and removed if so
+        for d, nd in shower_dict.items():
+
+            l, b, v = nd['lmda'], nd['beta'], nd['vel']
+            # print(l_min, l, l_max)
+            # print(b_min, b, b_max)
+            # print(v_min, v, v_max)
+
+            if l_min < l < l_max and b_min < b < b_max and v_min < v < v_max and d not in keys_to_remove:
+                
+                voxel_meteors += 1 # keeps track of the number of meteors deleted
+                print(d, end=' ')
+                removed_dict[d] = {'lmda' : l, 'beta' : b, 'vel' : v}
+                del new_dict[d] # keyed by date and time, which is unique to each meteor
+    
+
+    # for key in keys_to_remove:
+    #     print(key, end=' ')
+    #     del shower_dict[key]
+    
+    # print(voxel_meteors)
+    print('\nNum of meteors after count check: ', len(new_dict))
+
+    # there are less meteors removed from this step than there are counts per voxel
+    # my voxel function only returns information of counts, not where each meteor is and which voxel it lies in
+    # should update the function to see if I can include that step there, might make this function a bit easier to use/understand
+
+    num_left = init_len - num_removed
+
+    print(voxel_lmda, voxel_beta, voxel_vels) # voxel boundaries
+    
     print(f'\nAfter checking voxel counts, {num_removed} meteors were removed for being within voxel having too low counts relative to the shower', end=' ') 
     print(f'and {num_left} meteors remain as part of the shower radiant.\n')
-    
-    return shower_counts_copy
+    # print('Number of days remaining in shower region: ', len(shower_dict.keys()))
+    return shower_counts_copy, int(num_left), new_dict, removed_dict
 
 
 def coord_sigma(shower_lmda, shower_beta, shower_vels, slons, year):
@@ -2524,6 +2842,15 @@ def scale(x):
 
     return np.where(res > 180, res - 360, res)
 
+def scale2(x):
+    '''
+    This function scales the x axis to be centered at 270 degrees longitude
+    '''
+    x = np.asarray(x) % 360
+    res = (x) % 360
+
+    return np.where(res > 180, res - 360, res)
+
 # Only use this for presentation-style plots
 def relabel(x, pos):
     # pass
@@ -2542,136 +2869,7 @@ def relabel(x, pos):
         return '90°'
     else:
         return ''
-    
 
-def getvec(ra, dec):
-    '''
-    Takes coords of ra and dec and gets the vector form of it
-    '''
-
-    v = np.zeros(3)
-
-    dtr = np.pi/180
-
-    v[0] = -np.cos(dtr*dec)*np.sin(dtr*ra)
-    v[1] = np.cos(dtr*dec)*np.cos(dtr*ra)
-    v[2] = np.sin(dtr*dec)
-
-    return v
-
-def getangle(vec):
-    '''
-    takes a vector and returns the angles relative to that vector
-    '''
-
-    rtd = 180/np.pi
-
-    a = rtd*atan(vec[1], -vec[0])
-    b = rtd*np.arcsin(np.clip(vec[2], -1.0, 1.0))
-
-    return a, b
-
-    
-def atan(x, y):
-    """
-    Custom atan returning angle in [0, 2pi].
-    
-    Parameters:
-        x : float
-        y : float
-    Returns:
-        z : float, angle in radians
-    """
-
-    if x != 0.0:
-
-        # quadrant I and IV
-        if x > 0.0:
-            z = np.arctan(y/x)
-        # quadrant II and III
-        else:
-            z = np.arctan(y/x) + np.pi
-
-    # on the + and - y axis
-    else:
-        if y > 0.0:
-            z = np.pi
-
-        else:
-            z = -np.pi
-
-    if z < 0:
-        z += 2* np.pi # 3 so in range from [0,2pi]
-
-    return z
-
-def cel2hel(cel, sl, q=23.55):
-    """
-    Convert celestial coordinates to heliocentric coordinates.
-    
-    Parameters:
-        cel : array-like, [x, y, z] celestial coordinate vector
-        sl  : float, solar longitude in degrees
-        q   : float, tilt angle of earth's axis relative to the solar system's poles
-    
-    Returns:
-        hel : np.array, [x, y, z] heliocentric coordinate vector
-    """
-    dtr = np.pi / 180.0  # degrees to radians
-
-    # intermediate rotation by obliquity q
-    w = np.zeros(3)
-    w[0] = cel[0]
-    w[1] = cel[1] * np.cos(dtr * q) + cel[2] * np.sin(dtr * q)
-    w[2] = cel[2] * np.cos(dtr * q) - cel[1] * np.sin(dtr * q)
-
-    # rotation by solar longitude sl
-    hel = np.zeros(3)
-    hel[0] = -w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
-    hel[1] =  w[0] * np.sin(dtr * sl) - w[1] * np.cos(dtr * sl)
-    hel[2] =  w[2]
-
-    return hel
-# Main function call
-
-def hel2cel(hel, sl, q=23.55):
-    """
-    Convert heliocentric coordinates to celestial coordinates.
-    
-    Parameters:
-        hel : array-like, [x, y, z] heliocentric coordinate vector
-        sl  : float, solar longitude in degrees
-        q   : float, tilt angle of earth's axis relative to the solar system's poles
-    
-    Returns:
-        cel : np.array, [x, y, z] celestial coordinate vector
-    """
-
-    dtr = np.pi / 180
-
-    w = np.zeros(3)
-    w[0] =  hel[1] * np.sin(dtr * sl) - hel[0] * np.cos(dtr * sl)
-    w[1] = -hel[0] * np.sin(dtr * sl) - hel[1] * np.cos(dtr * sl)
-    w[2] =  hel[2]
-
-    cel = np.zeros(3)
-    cel[0] =  w[0]
-    cel[1] =  w[1] * np.cos(dtr * q) - w[2] * np.sin(dtr * q)
-    cel[2] =  w[2] * np.cos(dtr * q) + w[1] * np.sin(dtr * q)
-    return cel
-
-# a, b = 112.5, 32.1   # GEM radiant
-# sl, q = 261.0, 23.5  # solar longitude, obliquity
-
-# v_cel      = getvec(a, b)
-# v_hel      = cel2hel(v_cel, sl, q)
-# l_comp, b_comp = getangle(v_hel)
-# v_cel_back = hel2cel(v_hel, sl, q)
-# a_back, b_back = getangle(v_cel_back)
-
-# print(f'Original : a={a:.4f}  b={b:.4f}')
-# print(f'Computed: lmda={l_comp:.4f}, beta={b_comp:.4f}')
-# print(f'Recovered: a={a_back:.4f}  b={b_back:.4f}')
 
 
 # this will be used to define the path to the folder with radar data
@@ -2842,7 +3040,8 @@ with open(write_path, 'w') as full_data:
 
 scaled_lons = scale(plot_lons) # scaling longitudes to be centered at 270 degrees
 
-scaled_c2h = scale(c2h_lons)
+scaled_c2h_lons = scale2(c2h_lons)
+
 
 
 # number of orbits with ptn0 speeds vs uncertainty / number of orbits eliminated from filter
@@ -2913,18 +3112,18 @@ if monthly.upper().strip() == 'Y':
 
 
 if source_isolate:
-    echo_plot(scaled_lons, plot_lats, plot_vels, year, method, source=source, mode='source', map_mode=map_mode)
+    echo_plot(scaled_lons, plot_lats, plot_vels, year, method, source=source, mode='source', map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
     vel_histo(plot_vels, year, method, source=source, mode='source')
 
 else:
-    echo_plot(scaled_lons, plot_lats, plot_vels, year, method, map_mode=map_mode)
+    echo_plot(scaled_lons, plot_lats, plot_vels, year, method, map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
     vel_histo(plot_vels, year, method)
 
-    # echo_plot(c2h_lons, c2h_lats, plot_vels, year, method, map_mode=map_mode) # heliocentric coordinates not 1-1 with ecliptic coordinates
+    echo_plot(c2h_lons, c2h_lats, plot_vels, year, method, map_mode=map_mode)
+    # echo_plot(scaled_c2h_lons, c2h_lats, plot_vels, year, method, map_mode=map_mode, bounds=[(min(c2h_lons), max(c2h_lons)), (min(c2h_lats), max(c2h_lats))]) # heliocentric coordinates not 1-1 with ecliptic coordinates
 
     
 
-    
 
 ## SHOWER REMOVAL STEP ##
 
@@ -3113,7 +3312,8 @@ if shower_isolate:
     # print(active_dict)
     
     # scaling longitudes 
-    scaled_active_lons = scale(active_lons)
+    scaled_active_lons = scale(active_lons) # use shower radiants and find lmda/beta using c2h 
+                                            # and create bounds for each day of 5 degrees in between each computed value
 
     scaled_outer_lons = scale(outer_lons) # could split this list into two - one for days before, one for days after
 
@@ -3127,7 +3327,7 @@ if shower_isolate:
     # scaled_new_lons = scale(new_lons)
 
     # plot of the active shower
-    h_shower = echo_plot(scaled_active_lons, active_lats, active_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
+    h_shower = echo_plot(scaled_active_lons, active_lats, active_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
 
     print('Number of shower meteors: ', shower_meteors)
 
@@ -3238,58 +3438,149 @@ if shower_isolate:
     Background_avgs = np.mean(H_background, axis=1, keepdims=True)
 
     new_Background = np.broadcast_to(Background_avgs, H_background.shape)
-    print(new_Background)
+    # print(new_Background)
     
 
     # after background number density subtraction
     H_diff = H_shower  - new_Background
 
-    diff_lons, diff_lats, diff_vels, diff_days = shower_lons.copy(), shower_lats.copy(), shower_vels.copy(), active_days.copy()
+    # print(H_shower)
+
+    # for date in H_shower:
+        # if date not in h_diff dates:
+            # remove date from shower date list
+
+
+    diff_lons, diff_lats, diff_vels, diff_days = shower_lons.tolist(), shower_lats.tolist(), shower_vels.tolist(), active_days.copy()
+    back_lons, back_lats, back_vels, back_days = [], [], [], []
 
     print(len(diff_lons), len(diff_lats), len(diff_vels), len(diff_days))
 
-    diff_days = np.asarray(diff_days)
+    # diff_days = np.asarray(diff_days)
+    # back_days = np.asarray(back_days)
+    active_days = np.asarray(active_days)
     outer_days = np.asarray(outer_days)
 
-    # doing background subtraction for 3d distribution here
-    shower_mask = (
-        (~np.isin(diff_lons, background_lons)) &
-        (~np.isin(diff_lats, background_lats)) &
-        (~np.isin(diff_vels, background_vels)) &
-        (~np.isin(diff_days, outer_days))
-    )
+    # # doing background subtraction for 3d distribution here
+    # shower_mask = (
+    #     (~np.isin(diff_lons, background_lons)) &
+    #     (~np.isin(diff_lats, background_lats)) &
+    #     (~np.isin(diff_vels, background_vels)) &
+    #     (~np.isin(diff_days, outer_days))
+    # )
 
-    # background subtracted coordinates ; might not need H_shower - H_background step with this in place
-    diff_lons2 = diff_lons[shower_mask]
-    diff_lats2 = diff_lats[shower_mask]
-    diff_vels2 = diff_vels[shower_mask]
-    diff_days2 = diff_days[shower_mask]
+    # back_mask = (
+    #     (np.isin(back_lons, background_lons)) &
+    #     (np.isin(back_lats, background_lats)) &
+    #     (np.isin(back_vels, background_vels)) &
+    #     (np.isin(back_days, outer_days))
+    # )
 
-    print(len(diff_lons2), len(diff_lats2), len(diff_vels2), len(diff_days2))
 
-    # for l, b, v in zip (shower_lons, shower_lats, shower_vels):
+    # # print(diff_lons, background_lons)
 
-    #     if l in background_lons and b in background_lats and v in background_vels:
+    # # background subtracted coordinates ; might not need H_shower - H_background step with this in place
+    # diff_lons = diff_lons[shower_mask]
+    # diff_lats = diff_lats[shower_mask]
+    # diff_vels = diff_vels[shower_mask]
+    # diff_days = diff_days[shower_mask] # should i be removing events from this background subtraction?
 
-    #         diff_lons.remove(l)
-    #         diff_lats.remove(b)
-    #         diff_vels.remove(v)
+    # back_lons = back_lons[back_mask]
+    # back_lats = back_lats[back_mask]
+    # back_vels = back_vels[back_mask]
+    # back_days = back_days[back_mask]
+    # print(shower_mask, back_mask)
+    # print('days kept vs days removed: ', len(diff_days), len(back_days)) # does nothing for 2025 dsx
 
-    #         diff_count += 1
+    
+    # print(len(diff_lons), len(diff_lats), len(diff_vels), len(diff_days))
 
-    diff_count = len(diff_lons) - len(diff_lons2)
+    # print(diff_days)
+
+    shower_dict = {}
+
+    for l, b, v, d in zip (shower_lons, shower_lats, shower_vels, active_days):
+
+        if l in background_lons and b in background_lats and v in background_vels:
+            
+            # meteors in the shower after background subtraction
+            diff_lons.remove(l)
+            diff_lats.remove(b)
+            diff_vels.remove(v)
+            diff_days.remove(d)
+
+            # meteors removed following background subtraction
+            back_lons.append(l)
+            back_lats.append(b)
+            back_vels.append(v)
+            back_days.append(d)
+
+        # want the meteors not in the above regions to move on to further filtering
+        else:
+            shower_dict[d] = {'lmda' : l, 'beta' : b, 'vel' : v}
+    
+    # echo_3d_plot(diff_lons, diff_lats, diff_vels, year, shower=shower_name, mode='shower')
+    # echo_3d_plot(back_lons, back_lats, back_vels, year, shower=shower_name, mode='shower')
+   
+
+    diff_count = len(shower_lons) - len(diff_lons)
+
+    H_diff, edges_diff, lons_diff, lats_diff, vels_diff = voxel_map(diff_lons, diff_lats, diff_vels, year, shower_name, shower_info=shower_dict)
+    # print(H_diff)
+    # shower voxel bins (lon/lat/vel)
+    # [array([36.73   , 42.77875, 48.8275 , 54.87625, 60.925  , 66.97375,
+    #    73.0225 , 79.07125, 85.12   ]), array([-15.43 , -14.275, -13.12 , -11.965, -10.81 ,  -9.655,  -8.5  ,
+    #     -7.345,  -6.19 ]), array([14.78   , 20.79625, 26.8125 , 32.82875, 38.845  , 44.86125,
+    #    50.8775 , 56.89375, 62.91   ])]
+
+    # subtracted shower voxel bins (lon/lat/vel)
+    # [array([36.68, 42.76, 48.84, 54.92, 61.  , 67.08, 73.16, 79.24, 85.32]), array([-15.27   , -14.13125, -12.9925 , -11.85375, -10.715  ,  -9.57625,
+    #     -8.4375 ,  -7.29875,  -6.16   ]), array([14.27  , 19.9075, 25.545 , 31.1825, 36.82  , 42.4575, 48.095 ,
+    #    53.7325, 59.37  ])]
+
+    # lon/lat stays mostly the same, though velocity shifts upward after using np.isin
+   
     
     print(f'\nFrom voxel subtraction, {diff_count} meteors were removed from the shower for overlapping with background sporadics.\n')
-    print(f'Currently, there are {len(diff_lons2)} meteors contained within the shower\'s radiant\n')
+    print(f'Currently, there are {len(diff_lons)} meteors contained within the shower\'s radiant\n')
     # voxel_map2(H_diff, edges_shower, scaled_active_lons, active_lats, threshold=5)
 
     # echo_plot(diff_lons2, diff_lats2, diff_vels2, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
-
-    # after 3 sigma clip
-    H_prime = voxel_subtract(year, H_diff, new_Background, shower_name, method) # will need to get lats/lons from this step and feed to coord_sigma
+    # print(shower_dict)
+    voxel_dict = voxel_organize(H_diff, edges_diff, shower_dict, year)
+    # after 3 sigma clip ; do date/time removal here next
+    H_prime, high_count_meteors, shower_meteor_dict, removed_dict = voxel_subtract(edges_diff, shower_dict, voxel_dict, year, H_diff, new_Background, shower_name, method) # will need to get lats/lons from this step and feed to coord_sigma
     # print(H_prime)
 
-    # voxel_map2(H_prime, edges_shower, scaled_active_lons, active_lats)
+    # remaining meteors after voxel subtract
+    lon1, lat1, vel1 = [], [], []
+
+    # removed meteors after voxel subtract
+    lon2, lat2, vel2 = [], [], []
+
+    for d in shower_meteor_dict.values():
+
+        l, b, v = d['lmda'], d['beta'], d['vel']
+
+        lon1.append(l)
+        lat1.append(b)
+        vel1.append(v)
+    
+    for d in removed_dict.values():
+
+        l, b, v = d['lmda'], d['beta'], d['vel']
+
+        lon2.append(l)
+        lat2.append(b)
+        vel2.append(v)
+
+    voxel_map(lon1, lat1, vel1, year)
+    print('Num remaining meteors: ', len(shower_meteor_dict))
+    voxel_map(lon2, lat2, vel2, year)
+    print('Num removed meteors: ', len(removed_dict))
+
+    # voxel_map2(H_diff, edges_shower, scaled_active_lons, active_lats, active_vels, threshold=0)
+
     voxel_map2(H_prime, edges_shower, diff_lons, diff_lats, diff_vels, threshold=0)
     voxel_with_hull(H_prime, edges_shower, diff_lons, diff_lats, diff_vels, threshold=0)
 
@@ -3298,13 +3589,13 @@ if shower_isolate:
     # for the convex hull call, I will need the set of meteors contained within the remaining voxels
     # saving these meteors to a new file is the next step
 
-    print('\nArray lengths', len(active_lons), len(diff_lons), len(final_lons)) # currently not changing in the coord_sigma test -> checking within 3 sigma which might be too high
+    print('\nBefore background subtraction:', len(active_lons), 'After background subtraction: ', len(diff_lons),'After 3 sigma test on voxel counts: ', high_count_meteors, 'After 3 sigma test on coordinates', len(final_lons)) # currently not changing in the coord_sigma test -> checking within 3 sigma which might be too high
 
     # echo_3d_plot(diff_lons, diff_lats, diff_vels, year, shower=shower_name, mode='shower')
-    echo_plot(final_lons, final_lats, final_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
+    # echo_plot(final_lons, final_lats, final_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
 
-    H_final, edges_final, final_lons2, final_lats2, final_vels2 = voxel_map(final_lons, final_lats, final_vels, year, name=shower_name, threshold=0)
+    H_final, edges_final, final_lons2, final_lats2, final_vels2 = voxel_map(final_lons, final_lats, final_vels, year, name=shower_name, threshold=3)
 
-    voxel_map2(H_final, edges_final, final_lons, final_lats, final_vels, threshold=5)
-    print(f'After all checks, there are {len(final_lons2)} meteors that will be found within the convex hull')
-    voxel_with_hull(H_final, edges_final, final_lons2, final_lats2, final_vels2, threshold=5)
+    voxel_map2(H_final, edges_final, final_lons, final_lats, final_vels, threshold=3)
+    print(f'After all checks, there are {len(final_lons2)} meteors that will be found within the convex hull (currently not accounting for set threshold)')
+    voxel_with_hull(H_final, edges_final, final_lons2, final_lats2, final_vels2, threshold=3)

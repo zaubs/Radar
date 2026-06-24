@@ -25,13 +25,13 @@ def getangle(vec):
 
     rtd = 180/np.pi
 
-    a = rtd*math.atan2(vec[1], vec[0])
+    a = rtd*atan3(vec[0], vec[1]) # fillped the values ; making the second value negative flips the image about the vertical axis
     b = rtd*np.arcsin(vec[2])
 
     return a, b
 
     
-def atan(x, y):
+def atan3(x, y):
     """
     Custom atan returning angle in [0, 2pi].
     
@@ -46,12 +46,12 @@ def atan(x, y):
 
         # quadrant I and IV
         if x > 0.0:
-            z = np.arctan(y/x)
+            z = np.atan(y/x) - np.pi/2 # put this factor of pi/2 here
         # quadrant II and III
         else:
-            z = np.arctan(y/x) + np.pi
+            z = np.atan(y/x) + np.pi/2 # changed from pi to pi/2
 
-    # on the + and - y axis
+    # on the + and - y axis respectively
     else:
         if y > 0.0:
             z = np.pi
@@ -89,6 +89,7 @@ def cel2hel(cel, sl, q=23.55):
     hel[0] = -w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
     hel[1] =  w[0] * np.sin(dtr * sl) - w[1] * np.cos(dtr * sl)
     hel[2] =  w[2]
+    # below is the opposite signed and transposed matrix, did not give right values
     # hel[0] =  w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
     # hel[1] =  w[0] * np.sin(dtr * sl) + w[1] * np.cos(dtr * sl)
     # hel[2] =  w[2]
@@ -125,6 +126,8 @@ def hel2cel(hel, sl, q=23.55):
     return cel
 
 def slon_corr(sl, c, d, q=23.55):
+
+    # pass # not using this function currently
 
     '''
     This is an approximation on the solar longitude correction oon ra / dec
@@ -163,7 +166,7 @@ def main():
     print(f'lon: {c}  lat: {d}')
 
     
-    # solar longitude correction
+    # # solar longitude correction
     # ra, dec = slon_corr(sl, c, d)
 
     # print(f'Ra: {ra} Dec: {dec}')
