@@ -86,12 +86,12 @@ def cel2hel(cel, sl, q=23.55):
 
     # rotation by solar longitude sl
     hel = np.zeros(3)
-    # hel[0] = -w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
-    # hel[1] =  w[0] * np.sin(dtr * sl) - w[1] * np.cos(dtr * sl)
-    # hel[2] =  w[2]
-    hel[0] =  w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
-    hel[1] =  w[0] * np.sin(dtr * sl) + w[1] * np.cos(dtr * sl)
+    hel[0] = -w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
+    hel[1] =  w[0] * np.sin(dtr * sl) - w[1] * np.cos(dtr * sl)
     hel[2] =  w[2]
+    # hel[0] =  w[0] * np.cos(dtr * sl) - w[1] * np.sin(dtr * sl)
+    # hel[1] =  w[0] * np.sin(dtr * sl) + w[1] * np.cos(dtr * sl)
+    # hel[2] =  w[2]
 
     return hel
 
@@ -113,8 +113,8 @@ def hel2cel(hel, sl, q=23.55):
 
     # reversing the solar longitude rotation
     w = np.zeros(3)
-    w[0] = hel[0] * np.cos(dtr * sl) + hel[1] * np.sin(dtr * sl) 
-    w[1] = -hel[0] * np.sin(dtr * sl) + hel[1] * np.cos(dtr * sl)
+    w[0] = -hel[0] * np.cos(dtr * sl) + hel[1] * np.sin(dtr * sl) 
+    w[1] = -hel[0] * np.sin(dtr * sl) - hel[1] * np.cos(dtr * sl)
     w[2] =  hel[2]
 
     # revsersing the axis tilt
@@ -125,6 +125,12 @@ def hel2cel(hel, sl, q=23.55):
     return cel
 
 def slon_corr(sl, c, d, q=23.55):
+
+    '''
+    This is an approximation on the solar longitude correction oon ra / dec
+    It currently mirrors the distribution of radiants for any data set I use
+    It also relies on the computed lon/lat using c2h
+    '''
 
     dtr = np.pi/180
 
@@ -142,9 +148,9 @@ def slon_corr(sl, c, d, q=23.55):
 
 def main():
     q = 23.55
-    ra  = 112.5
-    dec = 32.1
-    sl  = 261
+    ra  = 45.7
+    dec = 25
+    sl  = 81
 
     dtr = np.pi/180
 
@@ -158,9 +164,9 @@ def main():
 
     
     # solar longitude correction
-    ra, dec = slon_corr(sl, c, d)
+    # ra, dec = slon_corr(sl, c, d)
 
-    print(f'Ra: {ra} Dec: {dec}')
+    # print(f'Ra: {ra} Dec: {dec}')
 
     
     # cel = getvec(ra, dec)
