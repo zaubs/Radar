@@ -643,7 +643,7 @@ def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0,
 
         return H, edges, lmda, beta, vels # edges contains three arrays of coordinates by bin (lon, lat, vel)
 
-def voxel_map2(counts, edges, active_lmda, active_beta, active_vels, threshold=0):
+def voxel_map_counts(counts, edges, active_lmda, active_beta, active_vels, threshold=0):
     
     '''
     This voxel map function takes the counts per voxel and the voxel's positions (edges) 
@@ -2567,6 +2567,7 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
     shower_lmda = []
     shower_beta = []
     shower_vel = []
+    shower_days = []
 
     removed_voxels = []
 
@@ -2619,6 +2620,8 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
 
     keys_to_remove = set()
 
+    keep_mask = np.ones(len(lmda), dtype=bool)
+
     # iterate over each meteor, check which voxel is in, do the voxel count test and if this fails, delete this meteor and clear the voxel
     # for d, nd in shower_dict.items():
 
@@ -2670,15 +2673,19 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
                     num_removed += counts
 
                     # include meteors outside of the current removed voxel in each mask
-                    count_mask = ((lmda_coord > lmda) & (lmda < lmda_coord1) &
-                                  (beta_coord > beta) & (beta < beta_coord1) &
-                                  (vel_coord > vels) & (vels < vel_coord1)) # use to only grab meteors found in the current voxel
+                    count_mask = ((lmda_coord <= lmda) & (lmda <= lmda_coord1) &
+                                  (beta_coord <= beta) & (beta <= beta_coord1) &
+                                  (vel_coord <= vels) & (vels <= vel_coord1)) # use to only grab meteors found in the current voxel
+                    # meteors removed is finally the same as the counts being removed
+                    keep_mask &= ~count_mask # mark matched meteors for removal
+
+                    # lists are reset each iteration - extend to new list 
                     
-                    # might be too strong
-                    lmda_count = lmda[count_mask]
-                    beta_count = beta[count_mask]
-                    vels_count = vels[count_mask]
-                    days_count = days[count_mask]
+
+                    # shower_lmda.extend(lmda_count)
+                    # shower_beta.extend(beta_count)
+                    # shower_vel.extend(vels_count)
+                    # shower_days.extend(days_count)
 
                     # the main lists should contain where the removed meteors are roughly found in the defined radiant space
                     if [[lmda_coord, lmda_coord1], [beta_coord, beta_coord1], [vel_coord, vel_coord1]] not in removed_voxels:
@@ -2693,35 +2700,12 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
                 else:
                     num_left += counts
 
-                # for d, nd in shower_dict.items(): # where the loop was when it was deleting every event
-                # # i think this deletes everything because it goes over every meteor in the dictionary while set boundaries for voxels are defined
-                # # so when new voxels are defined, this loop is ran over again and the coordinates that fit within them are deleted
-                # # if this is done each time for every voxel it should remove everything; maybe move the dictionary loop outside the voxel check
+    lmda_count = lmda[keep_mask]
+    beta_count = beta[keep_mask]
+    vels_count = vels[keep_mask]
+    days_count = days[keep_mask]
 
-                #     l, b, v = nd['lmda'], nd['beta'], nd['vel']
-
-                #     # print('Boundaries: ', lmda_coord, lmda_coord1, beta_coord, beta_coord1, vel_coord, vel_coord1)
-                #     # print('Current coordinates: ', l, b, v)
-                    
-                #     if lmda_coord < l < lmda_coord1 and beta_coord < b < beta_coord1 and vel_coord < v < vel_coord1:
-                #         # shower_lmda.append(l)
-                #         # if 0.0 < counts < sigma:
-                #         #     # print(counts)
-                #         #     shower_counts_copy[i][j][n] = 0
-                #             # num_removed += counts
-                #         print('Deleted')
-                            
-                #         # filtered_lmda.remove(l)
-                #         # filtered_beta.remove(b)
-                #         # filtered_vels.remove(v)
-                #         # filtered_dates.remove(d)
-                #         # print(l, b, v, d, 'removed')
-                #         keys_to_remove.add(d) # maybe use i, j and n as coordinates instead? will have to group them differently to dates somehow - could build a dictionary before or within this function
-                #         # if meteor falls in this voxel
-                #             # remove meteor and day
-
-
-    print('Meteors after 3 sigma count test: ', len(lmda_count))
+    # print('Meteors after 3 sigma count test: ', len(shower_lmda))
 
     # pack the remaining meteors in a list and return this instead of four seperate lists
     shower_coords = []
@@ -2731,63 +2715,19 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
     shower_coords.append(vels_count)
     shower_coords.append(days_count)
 
-    # filtered_lmda  = lmda_list
-    # filtered_beta  = beta_list
-    # filtered_vels  = vels_list
-    # filtered_dates = dates_list
-    # print(len(shower_lmda)) # this should not always be equal to or less than num_removed, since removed voxels might have a count of zero
-    
-    voxel_meteors = 0
-    # print(len(shower_dict))
+    # shower_coords.append(shower_lmda)
+    # shower_coords.append(shower_beta)
+    # shower_coords.append(shower_vel)
+    # shower_coords.append(shower_days)
 
-    # new_dict = shower_dict.copy()
-    removed_dict = {}
+    print(f'Meteors before: {len(lmda)}  after: {len(lmda_count)}  removed: {len(lmda) - len(lmda_count)}')
+
+    # print(shower_coords)
 
     print('Num of voxels that have been emptied after the count check', len(removed_voxels)) # length is correct
     print('Num of counts removed: ', num_removed)
-    
-    # for sl, sb, sv in zip(shower_lmda, shower_beta, shower_vel):
-    # print('Num of meteors before count check:', len(shower_dict))
-    # goes over each stored voxel that was emptied
-    # for vox in removed_voxels:
-
-    #     sl, sb, sv = vox[0], vox[1], vox[2]
-
-    #     l_min, l_max = sl[0], sl[1]
-    #     b_min, b_max = sb[0], sb[1]
-    #     v_min, v_max = sv[0], sv[1] # the very last entry of velocities ends up being an entry from latitudes for some reason
-
-
-    #     # goes over each meteor and checks if it lies in the current voxel and removed if so
-    #     for d, nd in shower_dict.items():
-
-    #         l, b, v = nd['lmda'], nd['beta'], nd['vel']
-    #         # print(l_min, l, l_max)
-    #         # print(b_min, b, b_max)
-    #         # print(v_min, v, v_max)
-
-    #         if l_min < l < l_max and b_min < b < b_max and v_min < v < v_max and d not in keys_to_remove:
-                
-    #             voxel_meteors += 1 # keeps track of the number of meteors deleted
-    #             # print(d, end=' ')
-    #             removed_dict[d] = {'lmda' : l, 'beta' : b, 'vel' : v}
-    #             del new_dict[d] # keyed by date and time, which is unique to each meteor
-    
-
-    # for key in keys_to_remove:
-    #     print(key, end=' ')
-    #     del shower_dict[key]
-    
-    # print(voxel_meteors)
-    # print('\nNum of meteors after count check: ', len(new_dict))
-
-    # there are less meteors removed from this step than there are counts per voxel
-    # my voxel function only returns information of counts, not where each meteor is and which voxel it lies in
-    # should update the function to see if I can include that step there, might make this function a bit easier to use/understand
-
-    # num_left = init_len - num_removed
-
-    print(voxel_lmda, voxel_beta, voxel_vels) # voxel boundaries
+ 
+    # print(voxel_lmda, voxel_beta, voxel_vels) # voxel boundaries
     
     print(f'\nAfter checking voxel counts, {num_removed} meteors were removed for being within voxel having too low counts relative to the shower', end=' ') 
     print(f'and {num_left} meteors remain as part of the shower radiant.\n')
@@ -2795,7 +2735,7 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
     return shower_counts_copy, int(num_left), shower_coords
 
 
-def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, helios, slons, year):
+def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, shower_helios, slons, year):
 
     '''
     After creating a 3D voxel map of an isolated shower, the background flux is taken 5 days before and after the shower is active and a 3 sigma test is done on each meteor's
@@ -2811,25 +2751,26 @@ def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, helios, slon
     lmda_mean = np.mean(shower_lmda)
     beta_mean = np.mean(shower_beta)
     vels_mean = np.mean(shower_vels)
+    # Yung's paper says the 3 sigma comparison is done on a set of lon/lat/vel centered on the wavelet generated
+    # I don't know if I have a wavelet to base off of, so maybe I can use the stds of the means for now
 
+    # std might be too small
     lmda_std = np.std(shower_lmda)
     beta_std = np.std(shower_beta)
     vels_std = np.std(shower_vels)
+
 
     # new_lmda = np.asarray(shower_lmda.copy())
     # new_beta = np.asarray(shower_beta.copy())
     # new_vels = np.asarray(shower_vels.copy())
 
-    new_lmda = []
-    new_beta = []
-    new_vels = []
-    new_days = []
+    
     # Yung used st dev of a generated wavelet in her paper
     # I'll use an over all st dev for the shower region in the meantime while I figure out if I can use a wavelet as well
 
 
     # print(lmda_mean, beta_mean, vels_mean)
-    # print(lmda_std, beta_std, vels_std)
+    print('Lon std: ', lmda_std, 'Lat std: ', beta_std, 'Vel std: ', vels_std)
 
     # next need to find a way to get the flux; might be a few steps ahead of where I am in the project though
     # will confirm and revisit in the future if needed
@@ -2841,6 +2782,9 @@ def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, helios, slon
     beta_bounds = [shower_helios[1] - 3*beta_std, shower_helios[1] + 3*beta_std]
     vels_bounds = [vels_mean - 3*vels_std, vels_mean - 3*vels_std]
 
+    print(f'Shower Bounds:          {lmda_bounds}, {beta_bounds}')
+    
+
     shower_lmda = np.asarray(shower_lmda)
     shower_beta = np.asarray(shower_beta)
     shower_vels = np.asarray(shower_vels)
@@ -2850,7 +2794,11 @@ def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, helios, slon
                 (beta_bounds[0] <= shower_beta) & (shower_beta <= beta_bounds[1]))
                 # (vels_bounds[0] <= shower_vels) & (shower_vels <= vels_bounds[1]))
     # Too strong
-    
+
+    print(f'Passing lmda condition: {np.sum((shower_lmda >= lmda_bounds[0]) & (shower_lmda <= lmda_bounds[1]))}')
+    print(f'Passing beta condition:  {np.sum((shower_beta >= beta_bounds[0]) & (shower_beta <= beta_bounds[1]))}')
+    print(f'Passing both:            {np.sum(loc_mask)}')
+
     # mask = (
     # (np.abs(shower_lmda - lmda_mean) <= 3 * lmda_std) &
     # (np.abs(shower_beta - beta_mean) <= 3 * beta_std)  &
@@ -3208,7 +3156,8 @@ if shower_isolate:
     # list of important solar longitudes per strong shower from MCB with 5 day buffer both before and after the active shower days - Using this
     shower_slon = {'ARI' : np.arange(52, 110), 'DSX': np.arange(164, 208), 'ETA' : np.arange(20, 77),
                 'GEM' : np.arange(230, 284), 'ORI' : np.arange(188, 238), 'QUA' : np.arange(265, 302), 'SDA' : np.arange(104, 175)}
-    
+    # It might be worth including some other showers in here to see if there are any stronger ones in the distribution not mentioned before
+
     # list of shower peak solar longitudes from MCB
     shower_slon_peaks = {'ARI' : 81, 'DSX': 186, 'ETA' : 45,
                 'GEM' : 261, 'ORI' : 208, 'QUA' : 283, 'SDA' : 126}
@@ -3245,7 +3194,7 @@ if shower_isolate:
     
     shower_rad_drifts = {'ARI' : [0.86, 0.18], 'DSX' : [-1.00, 0.56], 'ETA' : [0.70, 0.33],
                          'GEM' : [1.12, -0.17], 'ORI' : [0.78, 0.02], 'QUA' : [0.78, -0.38], 'SDA' : [0.78, 0.30]} # 'KEY' : [alpha drift value, delta drift value] both in degrees
-   
+    
     # get the solar longitudes of the showers from the filenames
 
     # only from the files on days of when the shower is active
@@ -3372,10 +3321,11 @@ if shower_isolate:
 
                 # BEFORE MASK keeping track of number of meteors deemed close enough to the shower for a given solar longitude
                 shower_meteors += shower_meteor_count
-                total_meteors += shower_meteor_count
+                
 
                 # AFTER MASK
                 num_active_meteors += len(lmda_filtered)
+                total_meteors += len(lmda_filtered)
 
                 # also store the file in a new directory here
                 # will also want a way to copy sporadics to another file, or remove the shower meteors from this file using the background subtraction and 3 sigma test
@@ -3417,11 +3367,12 @@ if shower_isolate:
 
                 # BEFORE MASK: keeping track of number of meteors close enough to the source in background days of the shower
                 background_meteors += background_meteor_count
-                total_meteors += background_meteor_count
+                
                 
                 # AFTER MASK
 
-                num_outer_meteors += len(shower_lmda)
+                num_outer_meteors += len(lmda_filtered)
+                total_meteors += len(lmda_filtered)
 
             # storing both active and outer file data to these lists
             full_days.extend(shower_days)
@@ -3458,8 +3409,8 @@ if shower_isolate:
     # plot of the active shower
     h_shower = echo_plot(active_lons, active_lats, active_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode) # , bounds=[lcomp_bounds, bcomp_bounds]
     
-    print('Number of shower meteors before masking: ', shower_meteors)
-    print('Number of shower meteors after masking: ', num_active_meteors)
+    print('Number of shower meteors before region masking: ', shower_meteors)
+    print('Number of shower meteors after region masking: ', num_active_meteors)
 
     shower_lon_bounds = [min(scaled_active_lons), max(scaled_active_lons)]
     shower_lat_bounds = [min(active_lats), max(active_lats)]
@@ -3469,10 +3420,10 @@ if shower_isolate:
     h_background = echo_plot(outer_lons, outer_lats, outer_vels, year, method, shower=shower_name, mode='background', map_mode=map_mode) # , bounds=[lcomp_bounds, bcomp_bounds]
     # print('mean:', np.mean(h_background))
 
-    print('Number of background meteors before masking: ', background_meteors)
-    print('Number of background meteors after masking: ', num_outer_meteors)
+    print('Number of background meteors before region masking: ', background_meteors)
+    print('Number of background meteors after region masking: ', num_outer_meteors)
 
-    
+    print('\nNumber of total meteors after region masking: ', total_meteors)
 
     # one density matrix for both 5 days before/after
     # two density matrices for 5 days before, 5 days after
@@ -3573,7 +3524,7 @@ if shower_isolate:
     
 
     # after background number density subtraction
-    H_diff = H_shower  - new_Background
+    # H_diff = H_shower  - new_Background
 
     # print(H_shower)
 
@@ -3585,7 +3536,7 @@ if shower_isolate:
     diff_lons, diff_lats, diff_vels, diff_days = shower_lons.copy(), shower_lats.copy(), shower_vels.copy(), active_days.copy()
     back_lons, back_lats, back_vels, back_days = shower_lons.copy(), shower_lats.copy(), shower_vels.copy(), active_days.copy()
 
-    print(len(diff_lons), len(diff_lats), len(diff_vels), len(diff_days))
+    print('Before 3d background masking: ', len(diff_lons), len(diff_lats), len(diff_vels), len(diff_days))
 
 
     
@@ -3653,7 +3604,7 @@ if shower_isolate:
     # print('days kept vs days removed: ', len(diff_days), len(back_days)) # does nothing for 2025 dsx
 
     
-    print(len(diff_lons), len(diff_lats), len(diff_vels), len(diff_days))
+    print('After 3d background masking: ', len(diff_lons), len(diff_lats), len(diff_vels), len(diff_days))
 
     # print(diff_days)
 
@@ -3686,7 +3637,7 @@ if shower_isolate:
     diff_count = len(shower_lons) - len(diff_lons) # or len(back_lons)
     print(diff_count, len(back_lons), 'these should be the same\n')
 
-    H_diff, edges_diff, lons_diff, lats_diff, vels_diff = voxel_map(diff_lons, diff_lats, diff_vels, year, shower_name, threshold=10)
+    H_diff, edges_diff, lons_diff, lats_diff, vels_diff = voxel_map(diff_lons, diff_lats, diff_vels, year, shower_name, threshold=0)
     # print(H_diff)
     # shower voxel bins (lon/lat/vel)
     # [array([36.73   , 42.77875, 48.8275 , 54.87625, 60.925  , 66.97375,
@@ -3715,6 +3666,8 @@ if shower_isolate:
 
     # unpacking 3 sigma count meteors
     prime_lons, prime_lats, prime_vels, prime_days = shower_coords
+
+    print('After voxel count subtraction: ', prime_lons, prime_lats, prime_vels, prime_days)
 
     # # remaining meteors after voxel subtract
     # lon1, lat1, vel1 = [], [], []
@@ -3745,21 +3698,33 @@ if shower_isolate:
 
     # voxel_map2(H_diff, edges_shower, scaled_active_lons, active_lats, active_vels, threshold=0)
 
-    voxel_map2(H_prime, edges_shower, prime_lons, prime_lats, prime_vels, threshold=0)
-    voxel_with_hull(H_prime, edges_shower, diff_lons, diff_lats, diff_vels, threshold=0)
+    # strictly to visualize the voxels
+    voxel_map_counts(H_prime, edges_shower, prime_lons, prime_lats, prime_vels, threshold=5)
+    
+    # creates the convex hull around the same shape made by voxels using the function call right above
+    voxel_with_hull(H_prime, edges_shower, prime_lons, prime_lats, prime_vels, threshold=5)
 
     # the counts are not being passed onto the coordinate test, which might be why we see little change in 3sigma test
     final_lons, final_lats, final_vels, final_days = coord_sigma(prime_lons, prime_lats, prime_vels, prime_days, shower_helios, full_slons, year)
     # for the convex hull call, I will need the set of meteors contained within the remaining voxels
     # saving these meteors to a new file is the next step
 
-    print('\nBefore background subtraction:', len(active_lons), 'After background subtraction: ', len(diff_lons),'After 3 sigma test on voxel counts: ', high_count_meteors, 'After 3 sigma test on coordinates', len(final_lons)) # currently not changing in the coord_sigma test -> checking within 3 sigma which might be too high
+    print('\nBefore background subtraction:', len(active_lons), 'After background subtraction: ', len(diff_lons),'After 3 sigma test on voxel counts: ', high_count_meteors, 'After 3 sigma test on coordinates: ', len(final_lons)) # currently not changing in the coord_sigma test -> checking within 3 sigma which might be too high
 
     # echo_3d_plot(diff_lons, diff_lats, diff_vels, year, shower=shower_name, mode='shower')
     # echo_plot(final_lons, final_lats, final_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
 
-    H_final, edges_final, final_lons2, final_lats2, final_vels2 = voxel_map(final_lons, final_lats, final_vels, year, name=shower_name, threshold=3)
+    # creating the voxels made from coord subtract step
+    H_final, edges_final, final_lons2, final_lats2, final_vels2 = voxel_map(final_lons, final_lats, final_vels, year, name=shower_name, threshold=0)
 
-    voxel_map2(H_final, edges_final, final_lons, final_lats, final_vels, threshold=3)
+
+    voxel_map_counts(H_final, edges_final, final_lons2, final_lats2, final_vels2, threshold=5)
     print(f'After all checks, there are {len(final_lons2)} meteors that will be found within the convex hull (currently not accounting for set threshold)')
-    voxel_with_hull(H_final, edges_final, final_lons2, final_lats2, final_vels2, threshold=3)
+    voxel_with_hull(H_final, edges_final, final_lons2, final_lats2, final_vels2, threshold=5) 
+
+    # should note that this threshold does not effec the number of meteors saved as shower meteors
+    # can be implimented before coord sigma in a seperate function or in voxel subtract
+
+    # next step after the hull is made is to take the remaining dates, parse the original files and take the lines with these dates out of the files
+    # this gives a data set of sporadic only meteors to work with
+    # meteors taken out are ONLY within the shower - there will still be meteors on active days that are not within the hull and can be grouped with sporadic
