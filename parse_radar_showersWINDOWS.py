@@ -811,7 +811,7 @@ def voxel_map_parse(year, name, edges):
     
 
 
-def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, shower_name=None, background=False, bounds=None): # include month mode at some point for labelling
+def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, shower_name=None, background=False, bounds=None, helios=None): # include month mode at some point for labelling
     '''
     This function generates a heat map of the user specified orbit file, based on meteor counts per bin
     Month and source modes may be worked individually or simultaneously - in terms of saving distinct files of data
@@ -845,9 +845,19 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
     h = ax.hist2d(lmda, beta, bins=200, cmap='plasma') # should save files by bin size now for different runs
 
     binsize = len(h[0])
-    # print(binsize)
+    # print(binsize)   
 
-    
+    # use this to show which shower regions are being covered by the set dictionaries
+    # currently all clusters seen in the 2025 data set are covered - will look through other years when back on linux desktop
+    if helios is not None:
+
+        # creating shaded regions of each heliocentric shower coordinate below
+        for name, coords in helios.items():
+
+            lmda_bounds, beta_bounds = shower_radius(name, coords, bounds)
+
+            plt.fill_between(lmda, beta, where=(lmda_bounds[0] <= lmda) & (lmda <= lmda_bounds[1]) & (beta_bounds[0] <= beta) & (beta <= beta_bounds[1]), color='g', alpha=0.3)
+        
 
     # print(h[0]) # counts per bin 
 
@@ -1333,7 +1343,7 @@ def grab_coords(parent):
     return latitudes, longitudes, ptn0_vels, del_ptn0_vels, geo_vels, keys_to_delete, loc_count, times, dists, angles, c2h_lmda, c2h_beta # also returning the number of files with defined coordinates for more precise tracking purposes
 
 
-def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=None, mode='year', map_mode='scatter', bounds=None):
+def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=None, mode='year', map_mode='scatter', bounds=None, shower_helios=None):
     '''
     This function takes the ecliptic coordinates of clean echoes that satisfy set restrictions and maps them to a 2 dimensional grid representing a celestial 'sphere'
         A goal is to create elliptical figures, but currently rectangular until I figure out how to do that
@@ -1342,10 +1352,11 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
         month - plots the echo data for each month and saves those figures in appropriate folders with the corresponding monthly txt files
     '''
 
-    if bounds != None:
+    if bounds is not None and not isinstance(bounds, dict):
         lon_bounds, lat_bounds = bounds[0], bounds[1] # each is a list of mmin, max values
     else:
         lon_bounds, lat_bounds = None, None
+
     if mode == 'year':
     
         plot_path = f'{home}/clean file data/{year} clean figures' # new directory made
@@ -1437,6 +1448,26 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
         if map_mode == 'density':
             
             h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower, background=True)
+
+            return h
+
+        elif map_mode == 'velocity':
+
+            vel_map(lmda, beta, vels, year, plot_folder, method)
+        
+        else:
+
+            scatter_map(lmda, beta, year, plot_folder, method)
+    
+
+    elif mode == 'shower sources':
+
+        plot_folder = f'{home}/clean shower data/{year} {shower} clean events/figures'
+        os.makedirs(plot_folder, exist_ok=True)
+
+        if map_mode == 'density':
+            
+            h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower, bounds=bounds, helios=shower_helios)
 
             return h
 
@@ -2289,6 +2320,48 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
 
         return shower_lons, shower_lats, shower_vels, corrected_coordinates, meteor_count, date_time
 
+def shower_hels(shower_rads, shower_slon_peaks):
+    '''
+    Takes the celestial coordinates of a given shower and computes its heliocentric coordinates
+    The converted coordinates are used to precisely isolate a shower's location and all meteors within that location in a generated plot using echo_plot, which uses heliocentric lmda/beta
+    '''
+    shower_hels = {}
+    
+    for shower, rads in shower_rads.items():
+
+        v_cel = getvec(rads[0], rads[1])
+
+        hel = cel2hel(v_cel, shower_slon_peaks[shower]) # currently doing peaks only, should do each one and tie into the correction done in shower parser for different ra/decs from the peak
+
+        lon, lat = getangle(hel) # store these
+
+        # scaled_lon = scale(lon) # bring to a 0-360 scale
+
+        shower_hels[shower] = [float(lon), float(lat)]
+    
+    # print(shower_hels)
+    # shower_helios = shower_hels[shower_name] # two entry list
+
+    return shower_hels # two entry list
+
+
+def shower_radius(shower_name, shower_helios, shower_bounds):
+    '''
+    Takes a given shower, computed coordinates from shower_hels and set boundaries for said location and calcuate defined heliocentric
+    boundaries for both lmda and beta
+    Will be used to plot shaded regions within these computed boundaries to highlight the region that showers should appear in
+    '''
+    shower_radii = shower_bounds[shower_name]
+    lon_radii, lat_radii = shower_radii[0], shower_radii[1]
+
+    lower_lon, upper_lon = lon_radii[0], lon_radii[1]
+    lower_lat, upper_lat = lat_radii[0], lat_radii[1]
+
+    # defining bounds for the specific shower here - put into shower parser and only include meteors within these bounds using a mask
+    lmda_bounds = [shower_helios[0] - lower_lon, shower_helios[0] + upper_lon]
+    beta_bounds = [shower_helios[1] - lower_lat, shower_helios[1] + upper_lat]
+
+    return lmda_bounds, beta_bounds
 
 def background_subtract(year, outer_lmda, outer_beta, outer_vel, name, method, slon_status='active'):
 
@@ -3028,7 +3101,40 @@ scaled_lons = scale(plot_lons) # scaling longitudes to be centered at 270 degree
 
 scaled_c2h_lons = scale2(c2h_lons)
 
+# IMPORTANT SHOWER DICTIONARIES #
+# global to some function calls before the shower conditional
 
+# list of important solar longitudes per shower from Brown et al. (2010)
+shower_slon0 = {'ARI' : np.arange(62,99), 'DSX': np.arange(174,197), 'ETA' : np.arange(30, 66),
+            'GEM' : np.arange(240,273), 'QUA' : np.arange(232, 291), 'SDA' : np.arange(114, 164)}
+
+# list of important solar longitudes per strong shower from MCB with 5 day buffer both before and after the active shower days - Using this
+shower_slon = {'ARI' : np.arange(52, 110), 'DSX': np.arange(164, 208), 'ETA' : np.arange(20, 77),
+            'GEM' : np.arange(230, 284), 'ORI' : np.arange(188, 238), 'QUA' : np.arange(265, 302), 'SDA' : np.arange(104, 175)}
+# It might be worth including some other showers in here to see if there are any stronger ones in the distribution not mentioned before
+
+# list of shower peak solar longitudes from MCB
+shower_slon_peaks = {'ARI' : 81, 'DSX': 186, 'ETA' : 45,
+            'GEM' : 261, 'ORI' : 208, 'QUA' : 283, 'SDA' : 126}
+
+# ordered lists of geocentric right ascension (alpha) and declination (delta) from Brown et al. (2010) and MCB (same numbers) - Using this
+shower_rads = {'ARI' : [45.7, 25], 'DSX': [154.3, -1], 'ETA' : [337.9, -0.9],
+            'GEM' : [112.5, 32.1], 'ORI' : [95.5, 15.2], 'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3]}
+
+# how much each shower 'drifts' in our night sky every day - not being used right now
+shower_rad_drifts = {'ARI' : [0.86, 0.18], 'DSX' : [-1.00, 0.56], 'ETA' : [0.70, 0.33],
+                        'GEM' : [1.12, -0.17], 'ORI' : [0.78, 0.02], 'QUA' : [0.78, -0.38], 'SDA' : [0.78, 0.30]} # 'KEY' : [alpha drift value, delta drift value] both in degrees
+
+# radii of longitude and latitude that showers fit in; some shower's need larger enclosed regions (quadrandids might be one of them)
+shower_bounds = {'ARI' : [[6, 6], [5, 5]], 'DSX' : [[20, 10], [5, 10]], 'ETA' : [[7, 5], [6, 6]],
+                        'GEM' : [[5, 5], [5, 5]], 'ORI' : [[5, 5], [4, 4]], 
+                        'QUA' : [[10, 10], [5, 5]], 'SDA' : [[6, 5], [5, 5]]}
+# look into making custom boundaries as well instead of giving a set radius around the center of the shower
+
+# the heliocentric longitude and latitude of each meteor shower, calculated using C2H2C script
+shower_helio_coords = shower_hels(shower_rads, shower_slon_peaks)
+
+print('Heliocentric coordinates of each shower: ', shower_helio_coords)
 
 # number of orbits with ptn0 speeds vs uncertainty / number of orbits eliminated from filter
 # will make both, unsure which one they want
@@ -3107,7 +3213,8 @@ else:
     echo_plot(scaled_lons, plot_lats, plot_vels, year, method, map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
     vel_histo(plot_vels, year, method)
 
-    echo_plot(c2h_lons, c2h_lats, plot_vels, year, method, map_mode=map_mode)
+    # make the mode 'shower source' to see where the regions from shower_helio_coords cover
+    echo_plot(c2h_lons, c2h_lats, plot_vels, year, method, map_mode=map_mode, bounds=shower_bounds, shower_helios=shower_helio_coords)
     # echo_plot(scaled_c2h_lons, c2h_lats, plot_vels, year, method, map_mode=map_mode, bounds=[(min(c2h_lons), max(c2h_lons)), (min(c2h_lats), max(c2h_lats))]) # heliocentric coordinates not 1-1 with ecliptic coordinates
 
     
@@ -3132,54 +3239,15 @@ if shower_isolate:
     shower_name = input('Enter the abbreviation of the shower you\'d like to work with - select from the abbreviations: ARI, DSX, ETA, GEM, ORI, QUA, SDA: ').upper().strip()
     # from here, the shower parser function should enter the clean file data folder and pick out the days the shower is active using specified solar longitude by a dictionary
 
-    # list of important solar longitudes per shower from Brown et al. (2010)
-    shower_slon0 = {'ARI' : np.arange(62,99), 'DSX': np.arange(174,197), 'ETA' : np.arange(30, 66),
-                'GEM' : np.arange(240,273), 'QUA' : np.arange(232, 291), 'SDA' : np.arange(114, 164)}
+    # using Cel2Hel2Cel function call to grab the heliocentric location of the chosen meteor shower
+    shower_helios = shower_helio_coords[shower_name]
     
-    # list of important solar longitudes per strong shower from MCB with 5 day buffer both before and after the active shower days - Using this
-    shower_slon = {'ARI' : np.arange(52, 110), 'DSX': np.arange(164, 208), 'ETA' : np.arange(20, 77),
-                'GEM' : np.arange(230, 284), 'ORI' : np.arange(188, 238), 'QUA' : np.arange(265, 302), 'SDA' : np.arange(104, 175)}
-    # It might be worth including some other showers in here to see if there are any stronger ones in the distribution not mentioned before
+    lon_bounds, lat_bounds = shower_radius(shower_name, shower_helios, shower_bounds)
 
-    # list of shower peak solar longitudes from MCB
-    shower_slon_peaks = {'ARI' : 81, 'DSX': 186, 'ETA' : 45,
-                'GEM' : 261, 'ORI' : 208, 'QUA' : 283, 'SDA' : 126}
+    print(lon_bounds[0], lon_bounds[1], lon_bounds[0] < lon_bounds[1])  # should be True
+    print(lat_bounds[0], lat_bounds[1], lat_bounds[0] < lat_bounds[1])
 
-    # ordered lists of geocentric right ascension (alpha) and declination (delta) from Brown et al. (2010) and MCB (same numbers) - Using this
-    shower_rads = {'ARI' : [45.7, 25], 'DSX': [154.3, -1], 'ETA' : [337.9, -0.9],
-                'GEM' : [112.5, 32.1], 'ORI' : [95.5, 15.2], 'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3]}
-    
-    # radii of longitude and latitude that showers fit in; some shower's need larger enclosed regions (quadrandids might be one of them)
-    shower_bounds = {}
-
-    shower_hels = {}
-    
-    for shower, rads in shower_rads.items():
-
-        v_cel = getvec(rads[0], rads[1])
-
-        hel = cel2hel(v_cel, shower_slon_peaks[shower]) # currently doing peaks only, should do each one and tie into the correction done in shower parser for different ra/decs from the peak
-
-        lon, lat = getangle(hel) # store these
-
-        # scaled_lon = scale(lon) # bring to a 0-360 scale
-
-        shower_hels[shower] = [float(lon), float(lat)]
-    
-    # print(shower_hels)
-    shower_helios = shower_hels[shower_name] # two entry list
-
-    # defining bounds for the specific shower here - put into shower parser and only include meteors within these bounds using a mask
-    lcomp_bounds = [shower_helios[0] - 5, shower_helios[0] + 5]
-    bcomp_bounds = [shower_helios[1] - 5, shower_helios[1] + 5]
-
-    print(lcomp_bounds[0], lcomp_bounds[1], lcomp_bounds[0] < lcomp_bounds[1])  # should be True
-    print(bcomp_bounds[0], bcomp_bounds[1], bcomp_bounds[0] < bcomp_bounds[1])
-
-    print('shower bounds: ', lcomp_bounds, bcomp_bounds)
-    
-    shower_rad_drifts = {'ARI' : [0.86, 0.18], 'DSX' : [-1.00, 0.56], 'ETA' : [0.70, 0.33],
-                         'GEM' : [1.12, -0.17], 'ORI' : [0.78, 0.02], 'QUA' : [0.78, -0.38], 'SDA' : [0.78, 0.30]} # 'KEY' : [alpha drift value, delta drift value] both in degrees
+    print('shower bounds: ', lon_bounds, lat_bounds)
     
     # get the solar longitudes of the showers from the filenames
 
@@ -3261,7 +3329,7 @@ if shower_isolate:
             # using these files to plot the ec# for 2022 dsx, went from 2360 meteors to 99hoes seen from the shower
             if file_slon in input_slons:
                 
-                shower_lmda, shower_beta, shower_vel, corr_shower_radiants, shower_meteor_count, shower_days = shower_parser(year, shower_folder_name, shower_file, file_slon, slon_peak, shower_rads, shower_rad_drifts, shower_name, method, slon_status='active', boundaries=[lcomp_bounds, bcomp_bounds])
+                shower_lmda, shower_beta, shower_vel, corr_shower_radiants, shower_meteor_count, shower_days = shower_parser(year, shower_folder_name, shower_file, file_slon, slon_peak, shower_rads, shower_rad_drifts, shower_name, method, slon_status='active', boundaries=[lon_bounds, lat_bounds])
                 
                 shower_lmda = scale(shower_lmda) # this step is important; keep here
                 # apply to outer and update the counter to track meteors near the shower
@@ -3272,12 +3340,12 @@ if shower_isolate:
                 shower_vel = np.asarray(shower_vel)
                 shower_days = np.asarray(shower_days)
 
-                shower_mask = ((shower_lmda >= lcomp_bounds[0]) & (shower_lmda <= lcomp_bounds[1]) &
-                                       (shower_beta >= bcomp_bounds[0]) & (shower_beta <= bcomp_bounds[1])
+                shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
+                                       (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
                                        )
                 
-                print(f'Passing lmda condition: {np.sum((shower_lmda >= lcomp_bounds[0]) & (shower_lmda <= lcomp_bounds[1]))}')
-                print(f'Passing beta condition:  {np.sum((shower_beta >= bcomp_bounds[0]) & (shower_beta <= bcomp_bounds[1]))}')
+                print(f'Passing lmda condition: {np.sum((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]))}')
+                print(f'Passing beta condition:  {np.sum((shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1]))}')
                 print(f'Passing both:            {np.sum(shower_mask)}')
                                 
                 lmda_filtered = shower_lmda[shower_mask]
@@ -3329,12 +3397,12 @@ if shower_isolate:
                 shower_vel = np.asarray(shower_vel)
                 shower_days = np.asarray(shower_days)
 
-                shower_mask = ((shower_lmda >= lcomp_bounds[0]) & (shower_lmda <= lcomp_bounds[1]) &
-                                       (shower_beta >= bcomp_bounds[0]) & (shower_beta <= bcomp_bounds[1])
+                shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
+                                       (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
                                        )
                 
-                print(f'Passing lmda condition: {np.sum((shower_lmda >= lcomp_bounds[0]) & (shower_lmda <= lcomp_bounds[1]))}')
-                print(f'Passing beta condition:  {np.sum((shower_beta >= bcomp_bounds[0]) & (shower_beta <= bcomp_bounds[1]))}')
+                print(f'Passing lmda condition: {np.sum((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]))}')
+                print(f'Passing beta condition:  {np.sum((shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1]))}')
                 print(f'Passing both:            {np.sum(shower_mask)}')
                                 
                 lmda_filtered = shower_lmda[shower_mask]
@@ -3474,7 +3542,7 @@ if shower_isolate:
     plt.colorbar(label='Shower Count Difference')
     plt.xlabel('Ecliptic Longitude')
     plt.ylabel('Ecliptic Latitude')
-    plt.gca().invert_xaxis()
+    # plt.gca().invert_xaxis()
     
     plt.title('Shower minus background density')
     plt.show()
@@ -3499,7 +3567,7 @@ if shower_isolate:
 
     # no meteors should be removed from the two calls below
     H_shower, edges_shower, shower_lons, shower_lats, shower_vels = voxel_map(active_lons, active_lats, active_vels, year, name=shower_name)
-    H_background, edges_background, background_lons, background_lats, background_vels = voxel_map(outer_lons, outer_lats, outer_vels, year, name=shower_name, bounds=[lcomp_bounds, bcomp_bounds, shower_vel_bounds])
+    H_background, edges_background, background_lons, background_lats, background_vels = voxel_map(outer_lons, outer_lats, outer_vels, year, name=shower_name, bounds=[lon_bounds, lat_bounds, shower_vel_bounds])
 
     print('sizes:', edges_shower[0].size, edges_background[0].size, edges_shower[1].size, edges_background[1].size, edges_shower[2].size, edges_background[2].size)
 
@@ -3647,7 +3715,7 @@ if shower_isolate:
     # print(shower_dict)
     # voxel_dict = voxel_organize(H_diff, edges_diff, shower_dict, year)
     # after 3 sigma clip ; do date/time removal here next
-    H_prime, high_count_meteors, shower_coords = voxel_subtract(edges_diff, diff_lons, diff_lats, diff_vels, diff_days, year, H_diff, new_Background, shower_name, method, threshold=5) # will need to get lats/lons from this step and feed to coord_sigma
+    H_prime, high_count_meteors, shower_coords = voxel_subtract(edges_diff, diff_lons, diff_lats, diff_vels, diff_days, year, H_diff, new_Background, shower_name, method, threshold=4) # will need to get lats/lons from this step and feed to coord_sigma
     # print(H_prime)
 
     # unpacking 3 sigma count meteors
