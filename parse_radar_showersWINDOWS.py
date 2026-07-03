@@ -406,9 +406,22 @@ def vel_check(vel1, vel2, dvel1, dvel2, velg):
     '''
     This function will be used to check if the time of flight velocity and the pre-t0 velocity agree to within 5%
     take vel m uncertainty too (velm - d_velm)
-
+    The following variables are taken from the Parse function and is called for each line in orbit files
     Variables:
-    
+        vel1: time of flight velocity, labeled as vel_m in the raw orbit files
+        vel2: Pre-t0 velocity, labeled as vel_ptn0 in the raw orbit files
+        dvel1: uncertainty in the time of flight velocity
+        dvel2: uncertainty in the pre-t0 velocity
+        velg: geocentric velocity
+
+    Output:
+        Boolean Value: Returns True or False based on if a meteor's time of flight velocity and pre-t0 velocities agree to within 10 km/s
+        Boolean Value: Returns True or False based on if a meteor's uncertainties in time of flight velocity and pre-t0 velocities overlap at all
+        percent_diff: the percent difference between vel1 and vel2, which is saved to the meteor's txt file for later reference/retrieval. This is returned as zero for files without listed velocities
+
+    If all three conditions are met for a meteor, it will be included in the filtered data set. Otherwise, the meteor's data will not be saved and the next line in the file is tested
+    Currently, only meteors that have a geocentric velocity between 10 and 80 km/s will be included to limit the radiant space being looked at. These values are subject to change
+    based on user preference.
     '''
     if vel1[0] == '.' or vel2[0] == '.' or dvel1[0] == '.' or dvel2[0] == '.':
         return False, False, 0 # skip rows with missing speed data; keep return type consistent
@@ -437,6 +450,7 @@ def vel_check(vel1, vel2, dvel1, dvel2, velg):
     if velg > 80 or velg < 10: # might include this step somewhere in the voxel plotting to only reduce the radiant space of the shower removal
         return False, False, percent_diff
 
+    # skipping filter for meteors faster than 48 km/s, as there is an unexpected jump in data at this point when without this check
     if vel1 >= 48:
         return True, True, percent_diff # 48 km/s is roughly in between the low and high velocity distributions
 
@@ -448,6 +462,12 @@ def vel_check(vel1, vel2, dvel1, dvel2, velg):
 def int_check(int_error):
     '''
     This function will be used to check if the interferometry error is less than 2 degrees
+
+    Variables:
+        int_error: The error in interferometry measurement, taken from the Parse function for each meteor
+
+    Output:
+        Boolean value: returns True or False based on the condition if int_error exceeds 2 degrees
     '''
     if int_error[0] == '.':
         return False # skip rows with missing interferometry error data
@@ -462,6 +482,12 @@ def int_check(int_error):
 def solid_angle_check(solid_angle_error):
     '''
     This function will be used to check if the radiant solid angle error is less than 5 degrees
+
+    Variables:
+        solid_angle_error: the error in solid angle measurement of the meteor's radiant
+
+    Output:
+        Boolean value: returns True or False based on the condition if solid_angle_error exceeds 5 degrees
     '''
     if solid_angle_error[0] == '.':
         return False # skip rows with missing solid angle error data
