@@ -65,7 +65,35 @@ def Parse(folder, filename, method='all', sources=[False, 'AH']):
     The clean echoes are stored in a parent dictionary that is keyed by the observed date and time, and contains the velocities, percent difference, and ecliptic coordinates for each event
     
     Being used on my MacBook Air, so the directories will have different names than the ones on my Linux Desktop Script
+
+    Variables:
+        folder: the directory that the raw orbit file are found within
+        file: the rw orbit file needing to be parsed and passed through filtering. any orbit files that do not make it through filters are not parsed/saved as meteors
+        method: a string chosen by the user that specifies which filters will be used - each of the following filters will parse and save data as txt files differently
+            'none' - no filtering is applied and all raw data is saved/plotted if coordinates are provided
+            'vel' or 'v' - only velocity agreement/threshold filtering is applied
+            'int' or 'i' - only interferometry error filtering is applied
+            'angle' or 'a' - only solid angle error filtering is applied
+            'station' or 's' - only station measurement error filtering is applied
+            'vel and int' or 'vi' - the velocity and interferometry filters are applied in that order
+            'vel and int and angle' or 'via' - the velocity, interferometry and angle filters are applied in that order
+            'all' - all filters in the script are applied to the dataset
+        sources: a list passing the following,
+            A boolean value (default False) - specifying if source parsing is applied
+            A string (default 'AH') - specifies which source to parse for
+                'H' - Helion
+                'AH' - Antihelion
+                'NA' - North Apex
+                'SA' - South Apex
+                'NT' - North Toroidal
+
+    Outputs:
+        parent_dict: a dictionary of filtered meteor data, with the key being the file's unique date/time and the value being a nested dictionary of coordinates, velocities 
+        and error measurements (filter dependent)
+        clean_data: the number of clean meteors that passed filtering within the current file being parsed, which will be added on to a total count outside the function call 
+        and saved within each file's clean txt data
     '''
+    # should add a paramter specifiyng if shower parsing is applied, could intgerate shower_parser into this part of the code
 
     # home= '/home/zaubs/Desktop/radar/'
     # home = Path.home() / 'Desktop/radar'
@@ -378,6 +406,9 @@ def vel_check(vel1, vel2, dvel1, dvel2, velg):
     '''
     This function will be used to check if the time of flight velocity and the pre-t0 velocity agree to within 5%
     take vel m uncertainty too (velm - d_velm)
+
+    Variables:
+    
     '''
     if vel1[0] == '.' or vel2[0] == '.' or dvel1[0] == '.' or dvel2[0] == '.':
         return False, False, 0 # skip rows with missing speed data; keep return type consistent
