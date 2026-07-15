@@ -3553,7 +3553,7 @@ scaled_c2h_lons = scale2(c2h_lons)
 
 # list of important solar longitudes per strong shower from MCB with 5 day buffer both before and after the active shower days - Using this
 shower_slon = {'ARI' : np.arange(52, 110), 'DSX': np.arange(164, 208), 'ETA' : np.arange(20, 77), 'GEM' : np.arange(230, 284), 
-               'ORI' : np.arange(188, 238), 'PER' : np.arange(113,157), 'QUA' : np.arange(265, 302), 'SDA' : np.arange(104, 175)}
+               'ORI' : np.arange(188, 238), 'PER' : np.arange(113,157), 'QUA' : np.arange(282, 284), 'SDA' : np.arange(104, 175)}
 # It might be worth including some other showers in here to see if there are any stronger ones in the distribution not mentioned before
 
 # list of shower peak solar longitudes from MCB
