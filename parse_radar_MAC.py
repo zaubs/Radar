@@ -34,7 +34,7 @@ import plotly.graph_objects as go
 # My imported functions
 from cel2hel2cel import *
 
-from shower_bounds import Shower_Bounds, shower_boundaries
+from shower_bounds import Shower_Bounds, shower_boundaries, shower_slon
 
 
 # This function is used to go through each meteor file for a chose year; the raw orbit data must exist in the file already
@@ -772,8 +772,8 @@ def voxel_with_hull(counts, edges, active_lmda, active_beta, active_vels, name, 
 
     
 
-    fig.show() # use this line for linux (and maybe windows) version
-    # fig.write_html("meteor_plot.html", auto_open=True) # use this line for mac version
+    # fig.show() # use this line for linux (and maybe windows) version
+    fig.write_html("meteor_plot.html", auto_open=True) # use this line for mac version
 
 
 def voxel_map_parse(year, name, edges):
@@ -821,7 +821,7 @@ def voxel_map_parse(year, name, edges):
     
 
 
-def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, shower_name=None, background=False, no_shower=False, bounds=None, helios=None): # include month mode at some point for labelling
+def heat_map(lmda, beta, year, path, method, sl, month=None, meteor_source=None, shower_name=None, background=False, no_shower=False, bounds=None, helios=None, daily_mode=[False, None]): # include month mode at some point for labelling
     '''
     This function generates a heat map of the user specified orbit file, based on meteor counts per bin
     Month and source modes may be worked individually or simultaneously - in terms of saving distinct files of data
@@ -847,9 +847,6 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
     #     ax.set_xlim(lon_bounds[0], lon_bounds[1])
     #     ax.set_ylim(lat_bounds[0], lat_bounds[1])
 
-    # else:
-    # ax.set_ylim(-60, 90)
-    # ax.set_xlim(-150, 150)
         
 
     h = ax.hist2d(lmda, beta, bins=200, cmap='plasma') # should save files by bin size now for different runs
@@ -882,9 +879,9 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 
     figure.colorbar(h[3], ax=ax, label='Number of meteors per bin')
 
-    ax.set_xlabel('Ecliptic Longitude (Lambda)')
-    ax.set_ylabel('Ecliptic Latitude (Beta)')
-
+    ax.set_xlabel(r'Ecliptic Longitude $(\lambda - \lambda_{\odot})$')
+    ax.set_ylabel(r'Ecliptic Latitude $(\beta)$')
+# $({\Delta v_{ptn0} / v_{ptn0} })$
     # aiming to have something like this, but I want to mask data points outside these bounds instead and set the limits to the regular bounds
     
     # ax.xaxis.set_major_locator(plt.FixedLocator([-90, 0, 90, 180, 270, 360])) # defines tick marks on the x axis
@@ -894,11 +891,17 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 
     # ax.invert_xaxis()
 
-    lmda_min, lmda_max = min(lmda) - 5, max(lmda) + 5
-    beta_min, beta_max = min(beta) - 2.5, max(beta) + 2.5
+    if daily_mode[0] == True:
+        ax.set_xlim(190, -190) # this is the correct way to view the distribution with H left and AH right
+        ax.set_ylim(-70, 100)
+    else:
+        lmda_min, lmda_max = min(lmda) - 5, max(lmda) + 5
+        beta_min, beta_max = min(beta) - 2.5, max(beta) + 2.5
 
-    ax.set_xlim(lmda_min, lmda_max)
-    ax.set_ylim(beta_min, beta_max)
+        ax.set_xlim(lmda_max, lmda_min)
+        ax.set_ylim(beta_min, beta_max)
+
+    
 
     # ax.set_ylim(-60, 90)
     # ax.set_xlim(-150, 150)
@@ -908,8 +911,24 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
     os.makedirs(counts_path, exist_ok=True)
 
     if month == None and meteor_source == None and shower_name == None:
-        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
-        plt.savefig(f'{path}/{year}_{method}Filter_radiantColorDist{binsize}.png')
+        if daily_mode[0] == False:
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
+            plt.savefig(f'{path}/{year}_{method}Filter_radiantColorDist{binsize}.png')
+
+        else:
+            sl = daily_mode[1]
+
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {sl} in {year}')
+
+            # new directory for daily plots
+            daily_path = f'{path}/each day'
+            os.makedirs(daily_path, exist_ok=True)
+
+            plt.savefig(f'{daily_path}/{year}_{sl}_{method}Filter_radiantColorDist{binsize}.png')
+
+            plt.close()
+            # don't have plt.show() here - the plots are not generated in chronological order of their sl
+            # They all get saved to the same directory though so if a movie is made using iMovie, then we can see how the distribution evolves in each successive day
 
         counts_file = os.path.join(counts_path, f"{method}-counts-{year}-{binsize}-29.txt")
     
@@ -919,11 +938,15 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 
         counts_file = os.path.join(counts_path, f"{method}-counts-{meteor_source}-{year}-{binsize}-29.txt")
 
+        plt.show()
+
     elif month != None and meteor_source == None:
         ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {month}/{year}')
         plt.savefig(f'{path}/{year}{month}_{method}Filter_radiantColorDist{binsize}.png')
 
         counts_file = os.path.join(counts_path, f"{method}-counts-{month}-{year}-{binsize}-29.txt")
+
+        plt.show()
     
     elif month != None and meteor_source != None:
         ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {month}/{year}')
@@ -931,12 +954,16 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 
         counts_file = os.path.join(counts_path, f"{method}-counts-{meteor_source}-{year}{month}-{binsize}-29.txt")
 
+        plt.show()
+
     elif shower_name != None:
         if background == False and no_shower == False:
             ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {shower_name} in {year}')
             plt.savefig(f'{path}/{year}_{method}Filter_{shower_name}_radiantColorDist{binsize}.png')
 
             counts_file = os.path.join(counts_path, f"{method}-counts-{shower_name}-{year}-{binsize}-29.txt")
+
+            plt.show()
         
         elif background == False and no_shower == True:
             ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements excluding all shower meteors in {year}')
@@ -944,11 +971,15 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 
             counts_file = os.path.join(counts_path, f"{method}-counts-removed{shower_name}-{year}-{binsize}-29.txt")
 
+            plt.show()
+
         elif background == True and no_shower == False:
             ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - background sporadic measurements around {shower_name} in {year}')
             plt.savefig(f'{path}/{year}_{method}Filter_{shower_name}_backgroundColorDist{binsize}.png')
 
             counts_file = os.path.join(counts_path, f"{method}-counts-{shower_name}-background-{year}-{binsize}-29.txt")
+
+            plt.show()
         
     
     with open(counts_file, 'w') as meteor_counts:
@@ -962,21 +993,20 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
             # for j in range(len(h[0][i])):
             #     meteor_counts.write(f' {h[0][i][j]}') # writing the count value for each bin in the row
             # meteor_counts.write('\n')
-             
 
     plt.show()
 
-    # calculating bin width here
-    d_lmda = np.diff(h[1])[0] # longitude width per bin
-    d_beta = np.diff(h[2])[0] # latitude width per bin
+    # # calculating bin width here
+    # d_lmda = np.diff(h[1])[0] # longitude width per bin
+    # d_beta = np.diff(h[2])[0] # latitude width per bin
 
-    # print(d_lmda, d_beta)
+    # # print(d_lmda, d_beta)
 
-    bin_area = d_lmda * d_beta
+    # bin_area = d_lmda * d_beta
 
-    # print(bin_area, len(lmda))
+    # # print(bin_area, len(lmda))
 
-    num_density = h[0] / (len(lmda) * bin_area)
+    # num_density = h[0] / (len(lmda) * bin_area)
 
     # h[0] is the matrix of counts per bin
     # dividing this by the number of longitude coordinates * area per bin
@@ -1384,7 +1414,7 @@ def grab_coords(parent):
     return latitudes, longitudes, ptn0_vels, del_ptn0_vels, geo_vels, keys_to_delete, loc_count, times, dists, angles, orbital_params, c2h_lmda, c2h_beta # also returning the number of files with defined coordinates for more precise tracking purposes
 
 
-def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=None, mode='year', map_mode='scatter', bounds=None, shower_helios=None):
+def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=None, mode='year', map_mode='scatter', bounds=None, shower_helios=None, daily=[False, None]):
     '''
     This function takes the ecliptic coordinates of clean echoes that satisfy set restrictions and maps them to a 2 dimensional grid representing a celestial 'sphere'
         A goal is to create elliptical figures, but currently rectangular until I figure out how to do that
@@ -1405,7 +1435,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
 
-            h = heat_map(lmda, beta, year, plot_path, method)
+            h = heat_map(lmda, beta, year, plot_path, method, sl, daily_mode=daily)
         
         elif map_mode == 'velocity':
 
@@ -1425,7 +1455,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
     
         if map_mode == 'density':
 
-            h = heat_map(lmda, beta, year, plot_folder, method, month=month)
+            h = heat_map(lmda, beta, year, plot_folder, method, sl, month=month)
 
         elif map_mode == 'velocity':
 
@@ -1455,7 +1485,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
             
-            h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower) # , bounds=[lon_bounds, lat_bounds]
+            h = heat_map(lmda, beta, year, plot_folder, method, sl, shower_name=shower) # , bounds=[lon_bounds, lat_bounds]
 
             return h
 
@@ -1488,7 +1518,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
             
-            h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower, background=True)
+            h = heat_map(lmda, beta, year, plot_folder, method, sl, shower_name=shower, background=True)
 
             return h
 
@@ -1508,7 +1538,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
             
-            h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower, no_shower=True, bounds=bounds, helios=shower_helios)
+            h = heat_map(lmda, beta, year, plot_folder, method, sl, shower_name=shower, no_shower=True, bounds=bounds, helios=shower_helios)
 
             return h
 
@@ -1527,7 +1557,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
             
-            h = heat_map(lmda, beta, year, plot_folder, method, no_shower=True) # , bounds=[lon_bounds, lat_bounds]
+            h = heat_map(lmda, beta, year, plot_folder, method, sl, no_shower=True) # , bounds=[lon_bounds, lat_bounds]
 
             return h
 
@@ -1582,7 +1612,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
             
             # heat_map(raw_lons, raw_lats, year, plot_path)
 
-            h = heat_map(lmda, beta, year, plot_path, method, meteor_source=source)
+            h = heat_map(lmda, beta, year, plot_path, method, sl, meteor_source=source)
         
         elif map_mode == 'velocity':
 
@@ -2803,69 +2833,6 @@ def background_subtract(year, outer_lmda, outer_beta, outer_vel, name, method, s
 
     return shower_lmda, shower_beta, shower_vel  
 
-def voxel_organize(H, edges, shower_dict, year):
-    '''
-    Go over each voxel and log which specific meteors are in them
-    Hope to use this in voxel subtract - any meteors in a voxel set to zero should be removed from the data set
-
-    '''
-
-    voxel_lmda = edges[0]
-    voxel_beta = edges[1]
-    voxel_vels = edges[2]
-
-    voxel_dict = {} # store each meteor in here keyed by voxel boundaries
-    # key = lon {n} lat {j} vel {i}
-    # value = date of meteor
-
-    # iterate over each meteor, check which voxel is in, do the voxel count test and if this fails, delete this meteor and clear the voxel
-   
-   
-    for i, matrix in enumerate(H): 
-        
-        # stops from defining an index out of bounds of the velocity bins
-        # if i + 1 >= len(voxel_vels):
-        #     continue 
-
-        vel_coord, vel_coord1 = voxel_vels[i], voxel_vels[i+1]
-        # print(vel_coord)
-
-        # print(shower_counts_copy[i])
-
-        for j in range(len(H[i])): # goes over each row of voxels in the i'th shower matrix
-            
-            # if j+1 >= len(voxel_beta):
-            #     continue
-
-            row = H[i][j]
-
-            beta_coord, beta_coord1 = voxel_beta[j], voxel_beta[j+1]
-
-            # print(beta_coord)
-
-            for n in range(len(row)):
-                # if n+1 >= len(voxel_lmda):
-                #     continue
-
-                lmda_coord, lmda_coord1 = voxel_lmda[n], voxel_lmda[n+1]
-                # print(lmda_coord)
-                counts = row[n]
-                # print(counts, 3*sigma) # this should be the specific voxel
-                # print(counts)
-
-                key = f"Lon {n} Lat {j} Vel {i}" # indicies for the iterated voxel
-
-                if key not in voxel_dict.keys():
-
-                    voxel_dict[key] = {'dates' : [], 'lon bounds' : [lmda_coord, lmda_coord1],
-                                       'lat bounds' : [beta_coord, beta_coord1], 'vel bounds' : [vel_coord, vel_coord1]}
-
-
-    return voxel_dict # should contain keys of each voxel and which meteors can be found in its boundaries
-
-    #                     voxel_dict[f'Boundaries: ({lmda_coord}, {lmda_coord1}), ({beta_coord}, {beta_coord}), ({vel_coord}, {vel_coord})'] = {'date' : d, 'lambda' : l, 'beta' : b, 'vel' : v}
-
-
 def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, background_counts, name, method, threshold=0, slon_status='active'):
     '''
     The 3d version of the above background subtraction function to be applied to voxel plots
@@ -2950,6 +2917,9 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
 
     #     l, b, v = nd['lmda'], nd['beta'], nd['vel']
 
+    # std = np.std(background_counts) # less than 1
+    # print('Stand Dev:', std)
+
     # goes over each background plane of lat/lon scaled by velocity - i corresponds to velocity index
     for i, matrix in enumerate(background_counts): 
         
@@ -2963,7 +2933,7 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
         nonzero = matrix[matrix > 0]
         sigma = np.std(nonzero) if nonzero.size > 0 else 0 # std of the BACKGROUND matrix
         # sigma = np.std(matrix) # st dev of the slab of voxels' counts
-        # print(sigma)
+        print(sigma)
 
         lmda_coord, lmda_coord1 = voxel_lmda[i], voxel_lmda[i+1]
         lmda_last = (i + 2 == len(voxel_lmda))
@@ -2978,6 +2948,9 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
                 continue
 
             row = shower_counts_copy[i][j]
+
+            # std = np.std(row) # too strong
+            # print('Stand Dev:', std)
 
             beta_coord, beta_coord1 = voxel_beta[j], voxel_beta[j+1]
             beta_last = (j + 2 == len(voxel_beta))
@@ -3432,6 +3405,14 @@ if shower_use.upper().strip() == 'Y':
 else:
     shower_isolate = False
 
+# If activated, this will branch off to plot each solar longitude individually
+each_day = input('Do you wish to see individual plots of each solar longitude? (Y or N): ')
+
+if each_day.upper() == 'Y':
+    all_days = True
+else:
+    all_days = False
+
 # Option for radiant heatmap, or a scatter plot
 map = input('Do you wish to see your plot as a color map? (Y or N): ')
 
@@ -3450,6 +3431,8 @@ else:
         orb_date = file[4:12] # year-solar longitude
         sl = file[9:12] # solar longitude
 
+        year = orb_date[0:4] # this is only valid if the data set being ran is within the same calendar year; need something more universal eventually 
+
         # Parse function call
         parent_dict, num_clean = Parse(folder_name, file, method=method, sources=[source_isolate, source]) # num clean being written as pre duplicate number of events
         # print(len(parent_dict))
@@ -3460,8 +3443,16 @@ else:
 
         ecliptics.append([lat, lon])
 
+        scaled_lon = scale(lon)
+
+        # plotting each 'day' (each file that is run through here)
+        if all_days:
+            echo_plot(scaled_lon, lat, vel_g, year, method, map_mode=map_mode, bounds=[(-150, 150), (-60, 90)], daily=[all_days, sl])
+            # print(f'{sl} has {num_locs} orbits being plotted') # just for troubleshooting and seeing if plots are being paired with sl correctly
+            # this seems to give the correct numbers
+
         # lat and lon are lists themselves, so I am putting those elements into a bigger list for plotting
-        plot_lons.extend(lon)
+        plot_lons.extend(scaled_lon)
         plot_lats.extend(lat)
         plot_vels.extend(vel_g)
 
@@ -3539,7 +3530,7 @@ with open(write_path, 'w') as full_data:
     full_data.write(year_message)
 
 
-scaled_lons = scale(plot_lons) # scaling longitudes to be centered at 270 degrees
+# scaled_lons = scale(plot_lons) # scaling longitudes to be centered at 270 degrees
 
 scaled_c2h_lons = scale2(c2h_lons)
 
@@ -3552,31 +3543,31 @@ scaled_c2h_lons = scale2(c2h_lons)
     # for example, the Perseids is strong in the year 2023, but the Quadrandids are not as strong in 2023 so Perseids might be needed more than Quadrandids
 
 # list of important solar longitudes per strong shower from MCB with 5 day buffer both before and after the active shower days - Using this
-shower_slon = {'ARI' : np.arange(52, 110), 'DSX': np.arange(164, 208), 'ETA' : np.arange(20, 77), 'GEM' : np.arange(230, 284), 
-               'ORI' : np.arange(188, 238), 'PER' : np.arange(113,157), 'QUA' : np.arange(282, 284), 'SDA' : np.arange(104, 175)}
+# shower_slon = {'ARI' : np.arange(52, 110), 'DSX': np.arange(164, 208), 'ETA' : np.arange(20, 77), 'GEM' : np.arange(230, 284), 
+#                'ORI' : np.arange(188, 238), 'PER' : np.arange(113, 157), 'QUA' : np.arange(282, 284), 'SDA' : np.arange(104, 175)}
 # It might be worth including some other showers in here to see if there are any stronger ones in the distribution not mentioned before
 
 # list of shower peak solar longitudes from MCB
 shower_slon_peaks = {'ARI' : 81, 'DSX': 186, 'ETA' : 45, 'GEM' : 261, 
-                    'ORI' : 208, 'PER' : 140, 'QUA' : 283, 'SDA' : 126}
+                    'ORI' : 208, 'PER' : 140, 'QUA' : 283, 'SDA' : 126, 'STA' : 196}
 
 # ordered lists of geocentric right ascension (alpha) and declination (delta) from Brown et al. (2010) and MCB (same numbers) - Using this
 shower_rads = {'ARI' : [45.7, 25], 'DSX': [154.3, -1], 'ETA' : [337.9, -0.9], 'GEM' : [112.5, 32.1], 
-                'ORI' : [95.5, 15.2], 'PER' : [48, 57.2], 'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3]}
+                'ORI' : [95.5, 15.2], 'PER' : [48, 57.2], 'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3], 'STA' : [30.9, 8.1]}
 
 # how much each shower 'drifts' in our night sky every day - not being used right now
 shower_rad_drifts = {'ARI' : [0.86, 0.18], 'DSX' : [-1.00, 0.56], 'ETA' : [0.70, 0.33], 'GEM' : [1.12, -0.17], 
-                     'ORI' : [0.78, 0.02], 'PER' : [1.39, 0.29], 'QUA' : [0.78, -0.38], 'SDA' : [0.78, 0.30]} # 'KEY' : [alpha drift value, delta drift value] both in degrees
+                     'ORI' : [0.78, 0.02], 'PER' : [1.39, 0.29], 'QUA' : [0.78, -0.38], 'SDA' : [0.78, 0.30], 'STA' : [0.817, 0.291]} # 'KEY' : [alpha drift value, delta drift value] both in degrees
 
 # radii of longitude and latitude that showers fit in; some shower's need larger enclosed regions (quadrandids might be one of them)
-shower_bounds = {'ARI' : [[10, 10], [7, 7], [10, 10]], 'DSX' : [[20, 10], [5, 10], [10, 10]], 'ETA' : [[10, 10], [6, 8], [10, 10]],
-                        'GEM' : [[5, 5], [5, 5], [10, 10]], 'ORI' : [[8, 6], [4, 6], [10, 10]], 'PER' : [[10, 10], [8, 8], [10, 10]],
-                        'QUA' : [[20, 10], [6, 6], [10, 10]], 'SDA' : [[6, 5], [4, 6], [10, 10]]}
+# shower_bounds = {'ARI' : [[10, 10], [7, 7], [10, 10]], 'DSX' : [[20, 10], [5, 10], [10, 10]], 'ETA' : [[10, 10], [6, 8], [10, 10]],
+#                         'GEM' : [[5, 5], [5, 5], [10, 10]], 'ORI' : [[8, 6], [4, 6], [10, 10]], 'PER' : [[10, 10], [8, 8], [10, 10]],
+#                         'QUA' : [[20, 10], [6, 6], [10, 10]], 'SDA' : [[6, 5], [4, 6], [10, 10]]}
 # look into making custom boundaries as well instead of giving a set radius around the center of the shower
 
 shower_mean_velocities = {'ARI' : 35, 'DSX' : 35, 'ETA' : 50,
                         'GEM' : 35, 'ORI' : 50, 'PER' : 50,
-                        'QUA' : 35, 'SDA' : 35}
+                        'QUA' : 35, 'SDA' : 35, 'STA' : 30}
 
 # the heliocentric longitude and latitude of each meteor shower, calculated using C2H2C script
 shower_helio_coords = shower_hels(shower_rads, shower_slon_peaks)
@@ -3653,11 +3644,11 @@ if monthly.upper().strip() == 'Y':
 
 
 if source_isolate:
-    echo_plot(scaled_lons, plot_lats, plot_vels, year, method, source=source, mode='source', map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
+    echo_plot(plot_lons, plot_lats, plot_vels, year, method, source=source, mode='source', map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
     vel_histo(plot_vels, plot_orbitals, year, method, source=source, mode='source')
 
 else:
-    echo_plot(scaled_lons, plot_lats, plot_vels, year, method, map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
+    echo_plot(plot_lons, plot_lats, plot_vels, year, method, map_mode=map_mode, bounds=[(150, -150), (-60, 90)])
     vel_histo(plot_vels, plot_orbitals, year, method)
 
     # make the mode 'shower source' to see where the regions from shower_helio_coords cover
@@ -3772,12 +3763,12 @@ if shower_isolate:
         total_meteors = 0
 
         # array of solar longitudes of a shower based on user input
-        input_slons = shower_slon[shower_name]
+        input_slons = shower_slon[year][shower_name]
         slon_peak = shower_slon_peaks[shower_name]
         min_slon, max_slon = min(input_slons), max(input_slons)
 
-        slons_before = min_slon - 10
-        slons_after = max_slon + 10
+        slons_before = min_slon - 5
+        slons_after = max_slon + 5
 
         outer_slons = list(range(slons_before, min_slon)) +  list(range(max_slon + 1, slons_after + 1))
         
@@ -4231,7 +4222,7 @@ if shower_isolate:
         # print(shower_dict)
         
         # after 3 sigma clip ; do date/time removal here next
-        H_prime, high_count_meteors, shower_coords = voxel_subtract(edges_diff, lons_diff, lats_diff, vels_diff, diff_days, year, H_diff, new_Background, shower_name, method, threshold=4) # will need to get lats/lons from this step and feed to coord_sigma
+        H_prime, high_count_meteors, shower_coords = voxel_subtract(edges_diff, lons_diff, lats_diff, vels_diff, diff_days, year, H_diff, new_Background, shower_name, method, threshold=3) # will need to get lats/lons from this step and feed to coord_sigma
         # print(H_prime)
 
         # unpacking 3 sigma count meteors
