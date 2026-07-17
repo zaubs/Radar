@@ -772,8 +772,8 @@ def voxel_with_hull(counts, edges, active_lmda, active_beta, active_vels, name, 
 
     
 
-    # fig.show() # use this line for linux (and maybe windows) version
-    fig.write_html("meteor_plot.html", auto_open=True) # use this line for mac version
+    fig.show() # use this line for linux (and maybe windows) version
+    # fig.write_html("meteor_plot.html", auto_open=True) # use this line for mac version
 
 
 def voxel_map_parse(year, name, edges):
@@ -821,7 +821,7 @@ def voxel_map_parse(year, name, edges):
     
 
 
-def heat_map(lmda, beta, year, path, method, sl, month=None, meteor_source=None, shower_name=None, background=False, no_shower=False, bounds=None, helios=None, daily_mode=[False, None]): # include month mode at some point for labelling
+def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, shower_name=None, background=False, no_shower=False, bounds=None, helios=None, daily_mode=[False, None], datatype='annual'): # include month mode at some point for labelling
     '''
     This function generates a heat map of the user specified orbit file, based on meteor counts per bin
     Month and source modes may be worked individually or simultaneously - in terms of saving distinct files of data
@@ -901,8 +901,10 @@ def heat_map(lmda, beta, year, path, method, sl, month=None, meteor_source=None,
         ax.set_xlim(lmda_max, lmda_min)
         ax.set_ylim(beta_min, beta_max)
 
-    
-
+    if datatype == 'all':
+        year_label = '2011-2025' # changing the label in figure titles that display all data from 2011-2025
+    elif datatype == 'annual':
+        year_label = year
     # ax.set_ylim(-60, 90)
     # ax.set_xlim(-150, 150)
     # plt.grid()
@@ -912,31 +914,31 @@ def heat_map(lmda, beta, year, path, method, sl, month=None, meteor_source=None,
 
     if month == None and meteor_source == None and shower_name == None:
         if daily_mode[0] == False:
-            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year}')
-            plt.savefig(f'{path}/{year}_{method}Filter_radiantColorDist{binsize}.png')
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year_label}')
+            plt.savefig(f'{path}/{year_label}_{method}Filter_radiantColorDist{binsize}.png')
 
         else:
             sl = daily_mode[1]
 
-            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {sl} in {year}')
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {sl} in {year_label}')
 
             # new directory for daily plots
             daily_path = f'{path}/each day'
             os.makedirs(daily_path, exist_ok=True)
 
-            plt.savefig(f'{daily_path}/{year}_{sl}_{method}Filter_radiantColorDist{binsize}.png')
+            plt.savefig(f'{daily_path}/{year_label}_{sl}_{method}Filter_radiantColorDist{binsize}.png')
 
             plt.close()
             # don't have plt.show() here - the plots are not generated in chronological order of their sl
             # They all get saved to the same directory though so if a movie is made using iMovie, then we can see how the distribution evolves in each successive day
 
-        counts_file = os.path.join(counts_path, f"{method}-counts-{year}-{binsize}-29.txt")
+        counts_file = os.path.join(counts_path, f"{method}-counts-{year_label}-{binsize}-29.txt")
     
     elif month == None and meteor_source != None:
-        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {year}')
-        plt.savefig(f'{path}/{year}_{method}Filter_{meteor_source}_radiantColorDist{binsize}.png')
+        ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {year_label}')
+        plt.savefig(f'{path}/{year_label}_{method}Filter_{meteor_source}_radiantColorDist{binsize}.png')
 
-        counts_file = os.path.join(counts_path, f"{method}-counts-{meteor_source}-{year}-{binsize}-29.txt")
+        counts_file = os.path.join(counts_path, f"{method}-counts-{meteor_source}-{year_label}-{binsize}-29.txt")
 
         plt.show()
 
@@ -958,26 +960,26 @@ def heat_map(lmda, beta, year, path, method, sl, month=None, meteor_source=None,
 
     elif shower_name != None:
         if background == False and no_shower == False:
-            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {shower_name} in {year}')
-            plt.savefig(f'{path}/{year}_{method}Filter_{shower_name}_radiantColorDist{binsize}.png')
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {shower_name} in {year_label}')
+            plt.savefig(f'{path}/{year_label}_{method}Filter_{shower_name}_radiantColorDist{binsize}.png')
 
             counts_file = os.path.join(counts_path, f"{method}-counts-{shower_name}-{year}-{binsize}-29.txt")
 
             plt.show()
         
         elif background == False and no_shower == True:
-            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements excluding all shower meteors in {year}')
-            plt.savefig(f'{path}/{year}_{method}Filter_removedAllShowers_radiantColorDist{binsize}.png')
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements excluding all shower meteors in {year_label}')
+            plt.savefig(f'{path}/{year_label}_{method}Filter_removedAllShowers_radiantColorDist{binsize}.png')
 
             counts_file = os.path.join(counts_path, f"{method}-counts-removed{shower_name}-{year}-{binsize}-29.txt")
 
             plt.show()
 
         elif background == True and no_shower == False:
-            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - background sporadic measurements around {shower_name} in {year}')
-            plt.savefig(f'{path}/{year}_{method}Filter_{shower_name}_backgroundColorDist{binsize}.png')
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - background sporadic measurements around {shower_name} in {year_label}')
+            plt.savefig(f'{path}/{year_label}_{method}Filter_{shower_name}_backgroundColorDist{binsize}.png')
 
-            counts_file = os.path.join(counts_path, f"{method}-counts-{shower_name}-background-{year}-{binsize}-29.txt")
+            counts_file = os.path.join(counts_path, f"{method}-counts-{shower_name}-background-{year_label}-{binsize}-29.txt")
 
             plt.show()
         
@@ -1179,17 +1181,27 @@ def duplicate(parent, times, dists, angles, dr_count, da_count):
   
 # Organizational function that saves clean echo data
 
-def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, method='all'):
+def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, method='all', data='annual'):
 
     '''
     This follows the parse function above, and writes the echo info for each clean event to an organized text file
     '''
 
-    # defining a path to create a new folder containing saved info of clean echo data
-    sub_folder = f'{home}/clean file data/{date[0:4]} clean events'
-    os.makedirs(sub_folder, exist_ok=True)
+    sl = date[-3:]
 
-    path = os.path.join(sub_folder, f"clean-{date}-29.txt") # 29 MHz is the frequency used by CMOR
+    # defining a path to create a new folder containing saved info of clean echo data
+    if data == 'all': # saving files by solar longitude if data spans multiple years
+        sub_folder = f'{home}/clean file data/all clean events/{sl}'
+        os.makedirs(sub_folder, exist_ok=True)
+
+        path = os.path.join(sub_folder, f"clean-{date}-29.txt") # 29 MHz is the frequency used by CMOR
+    
+    elif data == 'annual': # saving files by year otherwise
+
+        sub_folder = f'{home}/clean file data/{date[0:4]} clean events'
+        os.makedirs(sub_folder, exist_ok=True)
+
+        path = os.path.join(sub_folder, f"clean-{date}-29.txt") # 29 MHz is the frequency used by CMOR
 
     num_clean = len(parent) # number of clean echoes that satisfy the set velocity condition in Parse
 
@@ -1414,7 +1426,7 @@ def grab_coords(parent):
     return latitudes, longitudes, ptn0_vels, del_ptn0_vels, geo_vels, keys_to_delete, loc_count, times, dists, angles, orbital_params, c2h_lmda, c2h_beta # also returning the number of files with defined coordinates for more precise tracking purposes
 
 
-def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=None, mode='year', map_mode='scatter', bounds=None, shower_helios=None, daily=[False, None]):
+def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=None, mode='year', map_mode='scatter', bounds=None, shower_helios=None, daily=[False, None], data='annual'):
     '''
     This function takes the ecliptic coordinates of clean echoes that satisfy set restrictions and maps them to a 2 dimensional grid representing a celestial 'sphere'
         A goal is to create elliptical figures, but currently rectangular until I figure out how to do that
@@ -1435,7 +1447,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
 
-            h = heat_map(lmda, beta, year, plot_path, method, sl, daily_mode=daily)
+            h = heat_map(lmda, beta, year, plot_path, method, daily_mode=daily, datatype=data)
         
         elif map_mode == 'velocity':
 
@@ -1455,7 +1467,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
     
         if map_mode == 'density':
 
-            h = heat_map(lmda, beta, year, plot_folder, method, sl, month=month)
+            h = heat_map(lmda, beta, year, plot_folder, method, month=month)
 
         elif map_mode == 'velocity':
 
@@ -1485,7 +1497,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
             
-            h = heat_map(lmda, beta, year, plot_folder, method, sl, shower_name=shower) # , bounds=[lon_bounds, lat_bounds]
+            h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower, datatype=data) # , bounds=[lon_bounds, lat_bounds]
 
             return h
 
@@ -1518,7 +1530,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
             
-            h = heat_map(lmda, beta, year, plot_folder, method, sl, shower_name=shower, background=True)
+            h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower, background=True, datatype=data)
 
             return h
 
@@ -1538,7 +1550,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
             
-            h = heat_map(lmda, beta, year, plot_folder, method, sl, shower_name=shower, no_shower=True, bounds=bounds, helios=shower_helios)
+            h = heat_map(lmda, beta, year, plot_folder, method, shower_name=shower, no_shower=True, bounds=bounds, helios=shower_helios, datatype=data)
 
             return h
 
@@ -1557,7 +1569,7 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
         if map_mode == 'density':
             
-            h = heat_map(lmda, beta, year, plot_folder, method, sl, no_shower=True) # , bounds=[lon_bounds, lat_bounds]
+            h = heat_map(lmda, beta, year, plot_folder, method, no_shower=True, datatype=data) # , bounds=[lon_bounds, lat_bounds]
 
             return h
 
@@ -3328,7 +3340,8 @@ def relabel(x, pos):
     else:
         return ''
 
-
+# Specify if it is raw or clean data being used
+raw_or_clean = input("Is the data to be analyzed filtered or raw? (1 for filtered, 2 for raw): ")
 
 # this will be used to define the path to the folder with radar data
 folder_name = input("Enter folder name (or drag folder here): ").strip("'\"").lstrip("& '").rstrip("'")  # Strip quotes that may be included when dragging from file explorer
@@ -3367,173 +3380,6 @@ d_vel_ptns = []
 c2h_lons = []
 c2h_lats = []
 
-
-# filter that is currently being used - change for testing
-
-method = input('Enter the method you wish to do testing with (choose from: raw, all, vel, int, angle, station, vel and int, vel and int and angle): ')
-
-method = method.lower().strip()
-
-
-# prompt asking for monthly organization
-
-monthly = input('Do you want to organize your data by month? (Y or N): ')
-
-
-# Source to be plotted based on user input
-
-source_use = input('Do you wish to work directly with the sporadic sources? (Y or N): ') # maybe after this, add a check to Parse that writes raw data to a seperate file for overplotting if true
-
-if source_use.upper() == 'Y':
-    source_isolate = True
-    source = input('Enter the source you wish to work with (choose from AH, H, NA, SA, NT, ALL): ')
-    source = source.upper().strip()
-else:
-    source_isolate = False
-    source = None
-
-
-# Shower to be plotted based on user input
-
-shower_use = input('Do you wish to work directly with a specific shower? (Y or N): ')
-
-
-if shower_use.upper().strip() == 'Y':
-    shower_isolate = True
-    # will ask for the name of the shower following the yearly plot for now
-    # might be worth working on different modes - if input is month, the code does monthly plotting, if the input is shower, the code does shower plotting
-else:
-    shower_isolate = False
-
-# If activated, this will branch off to plot each solar longitude individually
-each_day = input('Do you wish to see individual plots of each solar longitude? (Y or N): ')
-
-if each_day.upper() == 'Y':
-    all_days = True
-else:
-    all_days = False
-
-# Option for radiant heatmap, or a scatter plot
-map = input('Do you wish to see your plot as a color map? (Y or N): ')
-
-if map.upper() == 'Y':
-    map_mode = input('Enter the mode to display the map in (choose between velocity or density): ')
-else:
-    map_mode = 'scatter'
-
-# main loop to go through each file in the provided directory
-if len(folder) == 0:
-    print('Your folder is empty! Please check the folder name and try again.')
-else:
-    # goes through each event file in the folder
-    for file in folder:
-
-        orb_date = file[4:12] # year-solar longitude
-        sl = file[9:12] # solar longitude
-
-        year = orb_date[0:4] # this is only valid if the data set being ran is within the same calendar year; need something more universal eventually 
-
-        # Parse function call
-        parent_dict, num_clean = Parse(folder_name, file, method=method, sources=[source_isolate, source]) # num clean being written as pre duplicate number of events
-        # print(len(parent_dict))
-        
-        # coordinate collection call
-        lat, lon, vel_ptn0, del_vel_ptn0, vel_g, deleted_events, num_locs, times, dists, angles, orbitals, c2h_lon, c2h_lat = grab_coords(parent_dict) # will be used to grab the ecliptic coordinates of the clean echoes for plotting; will do later
-        # num locs is the number of events before duplicate correction below
-
-        ecliptics.append([lat, lon])
-
-        scaled_lon = scale(lon)
-
-        # plotting each 'day' (each file that is run through here)
-        if all_days:
-            echo_plot(scaled_lon, lat, vel_g, year, method, map_mode=map_mode, bounds=[(-150, 150), (-60, 90)], daily=[all_days, sl])
-            # print(f'{sl} has {num_locs} orbits being plotted') # just for troubleshooting and seeing if plots are being paired with sl correctly
-            # this seems to give the correct numbers
-
-        # lat and lon are lists themselves, so I am putting those elements into a bigger list for plotting
-        plot_lons.extend(scaled_lon)
-        plot_lats.extend(lat)
-        plot_vels.extend(vel_g)
-
-        vel_ptns.extend(vel_ptn0)
-        d_vel_ptns.extend(del_vel_ptn0)
-
-        num_without_coords += len(deleted_events)
-
-        # testing if the cel2hel function translates to the correct ecliptic coordinates
-        # v_cel      = getvec(radiants[0], radiants[1])
-        # v_hel      = cel2hel(v_cel, sl)
-        # l_comp, b_comp = getangle(v_hel)
-
-        axes, eccens, incls = orbitals
-
-        plot_axes.extend(axes)
-        plot_eccens.extend(eccens)
-        plot_incls.extend(incls)
-
-        c2h_lons.extend(c2h_lon)
-        c2h_lats.extend(c2h_lat)
-
-        # print('nums', num_locs, num_clean)
-        # function call to save located clean echo data
-        num_echoes += num_clean # adding on to counter to track number of clean echoes per year; might not need this
-        
-        # If we only want raw data, this runs and no duplicate check is applied
-        if method == 'raw':
-
-            parent_new = parent_dict.copy()
-
-            dr, da = 0, 0
-
-        
-        # this one is for when filters are being used, hence a duplicate check is necessary
-        else:
-            
-            # removing any meteors we deem duplicates (check duplicate function for criteria)
-            parent_new, dr, da = duplicate(parent_dict, times, dists, angles, delranges, delangles)
-            
-            delranges += dr
-            delangles += da
-
-            if dr != 0 or da != 0:
-                print(f'For events within 10 milliseconds of eachother, {delranges} events were deleted for being within 6km of each other, {delangles} events were deleted for having zenith/azimuth angles within 5 degrees')
-
-        
-        # print(len(parent_dict), len(parent_new)) # same as num locs, the second number is number of events after duplicate check
-
-        # running the writing function to only include data for clean echoes with a defined set of coordinates
-        num_echo_locs += clean_echoes(parent_new, num_clean, orb_date, folder_name, file, dr, da, method=method)
-
-year = orb_date[0:4] # this is only valid if the data set being ran is within the same calendar year; need something more universal eventually 
-
-plot_orbitals.append(plot_axes)
-plot_orbitals.append(plot_eccens)
-plot_orbitals.append(plot_incls)
-
-# Full Year Data: Printed to the terminal and saved to the same directory as the clean echo data
-message1 = f'\n\nFULL YEAR DATA:\n\n'
-message2 = f'The total number of clean echoes across all files is {num_echoes}, with {num_echo_locs} events observed at distinct times and that have defined ecliptic coordinate and can be plotted.\n'
-message3 = f'For all events within 10 milliseconds of eachother, {delranges} events were deleted for being within 6km of each other, {delangles} events were deleted for having zenith/azimuth angles within 5 degrees.\n'
-message4 = f'There were {num_without_coords} events deleted for not having a defined set of ecliptic coordinates.\n'
-
-year_message = message1+message2+message3+message4
-
-print(year_message)
-
- # writes data to this newly created file regardless of the mode chosen (yearly, monthly, shower, sources)
-main_path = f'{home}/clean file data/{year} clean events'
-
-write_path = os.path.join(main_path, f"FULL-{year}-29.txt")
-
-with open(write_path, 'w') as full_data:
-    full_data.write(year_message)
-
-
-# scaled_lons = scale(plot_lons) # scaling longitudes to be centered at 270 degrees
-
-scaled_c2h_lons = scale2(c2h_lons)
-
 # IMPORTANT SHOWER DICTIONARIES #
 # global to some function calls before the shower conditional
 
@@ -3549,15 +3395,15 @@ scaled_c2h_lons = scale2(c2h_lons)
 
 # list of shower peak solar longitudes from MCB
 shower_slon_peaks = {'ARI' : 81, 'DSX': 186, 'ETA' : 45, 'GEM' : 261, 
-                    'ORI' : 208, 'PER' : 140, 'QUA' : 283, 'SDA' : 126, 'STA' : 196}
+                    'ORI' : 208, 'PER' : 140, 'QUA' : 283, 'SDA' : 126}
 
 # ordered lists of geocentric right ascension (alpha) and declination (delta) from Brown et al. (2010) and MCB (same numbers) - Using this
 shower_rads = {'ARI' : [45.7, 25], 'DSX': [154.3, -1], 'ETA' : [337.9, -0.9], 'GEM' : [112.5, 32.1], 
-                'ORI' : [95.5, 15.2], 'PER' : [48, 57.2], 'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3], 'STA' : [30.9, 8.1]}
+                'ORI' : [95.5, 15.2], 'PER' : [48, 57.2], 'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3]}
 
 # how much each shower 'drifts' in our night sky every day - not being used right now
 shower_rad_drifts = {'ARI' : [0.86, 0.18], 'DSX' : [-1.00, 0.56], 'ETA' : [0.70, 0.33], 'GEM' : [1.12, -0.17], 
-                     'ORI' : [0.78, 0.02], 'PER' : [1.39, 0.29], 'QUA' : [0.78, -0.38], 'SDA' : [0.78, 0.30], 'STA' : [0.817, 0.291]} # 'KEY' : [alpha drift value, delta drift value] both in degrees
+                     'ORI' : [0.78, 0.02], 'PER' : [1.39, 0.29], 'QUA' : [0.78, -0.38], 'SDA' : [0.78, 0.30]} # 'KEY' : [alpha drift value, delta drift value] both in degrees
 
 # radii of longitude and latitude that showers fit in; some shower's need larger enclosed regions (quadrandids might be one of them)
 # shower_bounds = {'ARI' : [[10, 10], [7, 7], [10, 10]], 'DSX' : [[20, 10], [5, 10], [10, 10]], 'ETA' : [[10, 10], [6, 8], [10, 10]],
@@ -3567,131 +3413,1052 @@ shower_rad_drifts = {'ARI' : [0.86, 0.18], 'DSX' : [-1.00, 0.56], 'ETA' : [0.70,
 
 shower_mean_velocities = {'ARI' : 35, 'DSX' : 35, 'ETA' : 50,
                         'GEM' : 35, 'ORI' : 50, 'PER' : 50,
-                        'QUA' : 35, 'SDA' : 35, 'STA' : 30}
+                        'QUA' : 35, 'SDA' : 35}
 
 # the heliocentric longitude and latitude of each meteor shower, calculated using C2H2C script
 shower_helio_coords = shower_hels(shower_rads, shower_slon_peaks)
 
 print('Heliocentric coordinates of each shower: ', shower_helio_coords)
 
-# number of orbits with ptn0 speeds vs uncertainty / number of orbits eliminated from filter
-# will make both, unsure which one they want
-
-# fractional change in uncertainty in the ptn0 speed
-
-# frac_vel_ptns = []
-
-# # print(vel_ptns, d_vel_ptns)
-
-# for i in range(len(vel_ptns)):
-#     frac_ptn0 = d_vel_ptns[i] / vel_ptns[i]
-#     frac_vel_ptns.append(frac_ptn0)
-
-# figure = plt.figure(figsize=(10,5))
-
-# # plt.hist2d(vel_ptns, d_vel_ptns, bins=50)
-# plt.scatter(vel_ptns, frac_vel_ptns)
-
-# plt.title('Pre-t0 velocities vs fractional change in pre-t0 velocities')
-# plt.xlabel('Pre-t0 Velocities (km/s)', fontsize=12)
-# plt.ylabel(r'Fractional Change in Pre-t0 Velocity $({\Delta v_{ptn0} / v_{ptn0} })$', fontsize=12)
-
-# plt.show()
 
 
-# 3d map of clean meteors, wtih additional axis of geocentric velocity; should use this for monthly plotting instead of yearly, getting too many events in one plot to see anything
-# echo_3d_plot(scaled_lons, plot_lats, plot_vels, year)
+# this branch is for filtering new data, which will be ran through the opposing branch afterwards
+if raw_or_clean == '2':
+    method = input('Enter the method you wish to do testing with (choose from: raw, all, vel, int, angle, station, vel and int, vel and int and angle): ')
 
-# voxel map for convex hull
-# voxel_map(scaled_lons, plot_lats, plot_vels, year)
-
-# velocity histogram binning; want to do this for raw data, then once again for the filtered data; currently doing it with all filtering applied
-# vel_histo(plot_vels, year, method)
-
-gen_message = message2+message3+message4 # message to go into full files that are not yearly data (for monthly, shower and source files)
-
-## MONTHLY ORGANIZATION STEP ##
-
-# here, the code organizes the file data by month; might take away the option for user input and do this automatically
-
-if monthly.upper().strip() == 'Y':
-
-    # clean_folder_name = input('Enter the folder name of clean echo data you wish to organize by month (or drag folder here): ').strip("'\"").lstrip("& '").rstrip("'")  # Strip quotes that may be included when dragging from file explorer
-
-    clean_folder_name = f'{home}/clean file data/{year} clean events' # points to the clean file directory made by the first user input
-
-    clean_folder = sorted(os.listdir(os.path.join(clean_folder_name)))
+    method = method.lower().strip()
 
 
-    for clean_file in clean_folder:
-        # print(clean_file)
+    # prompt asking for monthly organization
 
-        monthly_echoes(year, clean_folder_name, clean_file)
-
-
-        # next step is to write a function that will go through the monthly organized files and plot the coordinates for each month to compare meteor sources across months; will do later
-
-    for m in range(1, 13):
-        # plot the coordinates for each month
-
-        monthly_plotter(year, m, clean_folder_name, clean_file, method, map_method=map_mode)
+    monthly = input('Do you want to organize your data by month? (Y or N): ')
 
 
-## SOURCE PLOTTING STEP ##
+    # Source to be plotted based on user input
 
-# creating a map of the clean meteor sources based on their coordinates of ecliptic latitude and longitude
-# echo_plot(scaled_lons, plot_lats, plot_vels, year, method)
+    source_use = input('Do you wish to work directly with the sporadic sources? (Y or N): ') # maybe after this, add a check to Parse that writes raw data to a seperate file for overplotting if true
 
-
-if source_isolate:
-    echo_plot(plot_lons, plot_lats, plot_vels, year, method, source=source, mode='source', map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
-    vel_histo(plot_vels, plot_orbitals, year, method, source=source, mode='source')
-
-else:
-    echo_plot(plot_lons, plot_lats, plot_vels, year, method, map_mode=map_mode, bounds=[(150, -150), (-60, 90)])
-    vel_histo(plot_vels, plot_orbitals, year, method)
-
-    # make the mode 'shower source' to see where the regions from shower_helio_coords cover
-    # echo_plot(c2h_lons, c2h_lats, plot_vels, year, method, map_mode=map_mode, bounds=shower_bounds, shower_helios=shower_helio_coords)
+    if source_use.upper() == 'Y':
+        source_isolate = True
+        source = input('Enter the source you wish to work with (choose from AH, H, NA, SA, NT, ALL): ')
+        source = source.upper().strip()
+    else:
+        source_isolate = False
+        source = None
 
 
+    # Shower to be plotted based on user input
+
+    shower_use = input('Do you wish to work directly with a specific shower? (Y or N): ')
+
+
+    if shower_use.upper().strip() == 'Y':
+        shower_isolate = True
+        # will ask for the name of the shower following the yearly plot for now
+        # might be worth working on different modes - if input is month, the code does monthly plotting, if the input is shower, the code does shower plotting
+    elif shower_use.upper().strip() == 'N':
+        shower_isolate = False
+
+    # If activated, this will branch off to plot each solar longitude individually
+    each_day = input('Do you wish to see individual plots of each solar longitude? (Y or N): ')
+
+    if each_day.upper() == 'Y':
+        all_days = True
+    elif each_day.upper() == 'N':
+        all_days = False
+
+    # Option for radiant heatmap, or a scatter plot
+    map = input('Do you wish to see your plot as a color map? (Y or N): ')
+
+    if map.upper() == 'Y':
+        map_mode = input('Enter the mode to display the map in (choose between velocity or density): ')
+    else:
+        map_mode = 'scatter'
+        
+
+    # main loop to go through each file in the provided directory
+    if len(folder) == 0:
+        print('Your folder is empty! Please check the folder name and try again.')
+    else:
+        
+        # If we work with all data and not just one specific year
+        if folder_name[-3:] == 'all':
+
+            datatype = 'all'
+            
+            for fold in folder:
+                print(fold) # fold should be the yearly data
+
+                year = fold[0:4]
+
+                subfold = f'{folder_name}/{fold}'
+
+                fold_path = os.listdir(os.path.join(subfold))
+
+                # goes through each event in the folder
+                for file in fold_path:
+
+                    orb_date = file[4:12] # year-solar longitude
+                    sl = file[9:12] # solar longitude
+
+                    # year = orb_date[0:4] # this is only valid if the data set being ran is within the same calendar year; need something more universal eventually 
+
+
+                    year = orb_date[0:4] # this is only valid if the data set being ran is within the same calendar year; need something more universal eventually 
+
+                    # Parse function call #
+                    parent_dict, num_clean = Parse(subfold, file, method=method, sources=[source_isolate, source]) # num clean being written as pre duplicate number of events
+                    # print(len(parent_dict))
+                    
+                    # coordinate collection call
+                    lat, lon, vel_ptn0, del_vel_ptn0, vel_g, deleted_events, num_locs, times, dists, angles, orbitals, c2h_lon, c2h_lat = grab_coords(parent_dict) # will be used to grab the ecliptic coordinates of the clean echoes for plotting; will do later
+                    # num locs is the number of events before duplicate correction below
+
+                    ecliptics.append([lat, lon])
+
+                    scaled_lon = scale(lon)
+
+                    # plotting each 'day' (each file that is run through here)
+                    if all_days:
+                        echo_plot(scaled_lon, lat, vel_g, year, method, map_mode=map_mode, bounds=[(-150, 150), (-60, 90)], daily=[all_days, sl])
+                        # print(f'{sl} has {num_locs} orbits being plotted') # just for troubleshooting and seeing if plots are being paired with sl correctly
+                        # this seems to give the correct numbers
+
+                    # lat and lon are lists themselves, so I am putting those elements into a bigger list for plotting
+                    plot_lons.extend(scaled_lon)
+                    plot_lats.extend(lat)
+                    plot_vels.extend(vel_g)
+
+                    vel_ptns.extend(vel_ptn0)
+                    d_vel_ptns.extend(del_vel_ptn0)
+
+                    num_without_coords += len(deleted_events)
+
+                    # testing if the cel2hel function translates to the correct ecliptic coordinates
+                    # v_cel      = getvec(radiants[0], radiants[1])
+                    # v_hel      = cel2hel(v_cel, sl)
+                    # l_comp, b_comp = getangle(v_hel)
+
+                    axes, eccens, incls = orbitals
+
+                    plot_axes.extend(axes)
+                    plot_eccens.extend(eccens)
+                    plot_incls.extend(incls)
+
+                    c2h_lons.extend(c2h_lon)
+                    c2h_lats.extend(c2h_lat)
+
+                    # print('nums', num_locs, num_clean)
+                    # function call to save located clean echo data
+                    num_echoes += num_clean # adding on to counter to track number of clean echoes per year; might not need this
+                    
+                    # If we only want raw data, this runs and no duplicate check is applied
+                    if method == 'raw':
+
+                        parent_new = parent_dict.copy()
+
+                        dr, da = 0, 0
+
+                    
+                    # this one is for when filters are being used, hence a duplicate check is necessary
+                    else:
+                        
+                        # removing any meteors we deem duplicates (check duplicate function for criteria)
+                        parent_new, dr, da = duplicate(parent_dict, times, dists, angles, delranges, delangles)
+                        
+                        delranges += dr
+                        delangles += da
+
+                        if dr != 0 or da != 0:
+                            print(f'For events within 10 milliseconds of eachother, {delranges} events were deleted for being within 6km of each other, {delangles} events were deleted for having zenith/azimuth angles within 5 degrees')
+
+                    
+                    # print(len(parent_dict), len(parent_new)) # same as num locs, the second number is number of events after duplicate check
+
+                    # running the writing function to only include data for clean echoes with a defined set of coordinates
+                    num_echo_locs += clean_echoes(parent_new, num_clean, orb_date, subfold, file, dr, da, method=method, data='all')
+
+
+        else:
+            datatype='annual'
+            # goes through each event file in the folder
+            for file in folder:
+
+                orb_date = file[4:12] # year-solar longitude
+                sl = file[9:12] # solar longitude
+
+                # year = orb_date[0:4] # this is only valid if the data set being ran is within the same calendar year; need something more universal eventually 
+
+
+                year = orb_date[0:4] # this is only valid if the data set being ran is within the same calendar year; need something more universal eventually 
+
+                # Parse function call #
+                parent_dict, num_clean = Parse(folder_name, file, method=method, sources=[source_isolate, source]) # num clean being written as pre duplicate number of events
+                # print(len(parent_dict))
+                
+                # coordinate collection call
+                lat, lon, vel_ptn0, del_vel_ptn0, vel_g, deleted_events, num_locs, times, dists, angles, orbitals, c2h_lon, c2h_lat = grab_coords(parent_dict) # will be used to grab the ecliptic coordinates of the clean echoes for plotting; will do later
+                # num locs is the number of events before duplicate correction below
+
+                ecliptics.append([lat, lon])
+
+                scaled_lon = scale(lon)
+
+                # plotting each 'day' (each file that is run through here)
+                if all_days:
+                    echo_plot(scaled_lon, lat, vel_g, year, method, map_mode=map_mode, bounds=[(-150, 150), (-60, 90)], daily=[all_days, sl])
+                    # print(f'{sl} has {num_locs} orbits being plotted') # just for troubleshooting and seeing if plots are being paired with sl correctly
+                    # this seems to give the correct numbers
+
+                # lat and lon are lists themselves, so I am putting those elements into a bigger list for plotting
+                plot_lons.extend(scaled_lon)
+                plot_lats.extend(lat)
+                plot_vels.extend(vel_g)
+
+                vel_ptns.extend(vel_ptn0)
+                d_vel_ptns.extend(del_vel_ptn0)
+
+                num_without_coords += len(deleted_events)
+
+                # testing if the cel2hel function translates to the correct ecliptic coordinates
+                # v_cel      = getvec(radiants[0], radiants[1])
+                # v_hel      = cel2hel(v_cel, sl)
+                # l_comp, b_comp = getangle(v_hel)
+
+                axes, eccens, incls = orbitals
+
+                plot_axes.extend(axes)
+                plot_eccens.extend(eccens)
+                plot_incls.extend(incls)
+
+                c2h_lons.extend(c2h_lon)
+                c2h_lats.extend(c2h_lat)
+
+                # print('nums', num_locs, num_clean)
+                # function call to save located clean echo data
+                num_echoes += num_clean # adding on to counter to track number of clean echoes per year; might not need this
+                
+                # If we only want raw data, this runs and no duplicate check is applied
+                if method == 'raw':
+
+                    parent_new = parent_dict.copy()
+
+                    dr, da = 0, 0
+
+                
+                # this one is for when filters are being used, hence a duplicate check is necessary
+                else:
+                    
+                    # removing any meteors we deem duplicates (check duplicate function for criteria)
+                    parent_new, dr, da = duplicate(parent_dict, times, dists, angles, delranges, delangles)
+                    
+                    delranges += dr
+                    delangles += da
+
+                    if dr != 0 or da != 0:
+                        print(f'For events within 10 milliseconds of eachother, {delranges} events were deleted for being within 6km of each other, {delangles} events were deleted for having zenith/azimuth angles within 5 degrees')
+
+                
+                # print(len(parent_dict), len(parent_new)) # same as num locs, the second number is number of events after duplicate check
+
+                # running the writing function to only include data for clean echoes with a defined set of coordinates
+                num_echo_locs += clean_echoes(parent_new, num_clean, orb_date, folder_name, file, dr, da, method=method)
+
+
+    plot_orbitals.append(plot_axes)
+    plot_orbitals.append(plot_eccens)
+    plot_orbitals.append(plot_incls)
+
+    # Full Year Data: Printed to the terminal and saved to the same directory as the clean echo data
+    message1 = f'\n\nFULL YEAR DATA:\n\n'
+    message2 = f'The total number of clean echoes across all files is {num_echoes}, with {num_echo_locs} events observed at distinct times and that have defined ecliptic coordinate and can be plotted.\n'
+    message3 = f'For all events within 10 milliseconds of eachother, {delranges} events were deleted for being within 6km of each other, {delangles} events were deleted for having zenith/azimuth angles within 5 degrees.\n'
+    message4 = f'There were {num_without_coords} events deleted for not having a defined set of ecliptic coordinates.\n'
+
+    year_message = message1+message2+message3+message4
+
+    print(year_message)
+
+    # writes data to this newly created file regardless of the mode chosen (yearly, monthly, shower, sources)
+    main_path = f'{home}/clean file data/{year} clean events'
+
+    write_path = os.path.join(main_path, f"FULL-{year}-29.txt")
+
+    with open(write_path, 'w') as full_data:
+        full_data.write(year_message)
+
+
+    # scaled_lons = scale(plot_lons) # scaling longitudes to be centered at 270 degrees
+
+    scaled_c2h_lons = scale2(c2h_lons)
+
+
+    ## MONTHLY ORGANIZATION STEP ##
+
+    # here, the code organizes the file data by month; might take away the option for user input and do this automatically
+
+    if monthly.upper().strip() == 'Y':
+
+        # clean_folder_name = input('Enter the folder name of clean echo data you wish to organize by month (or drag folder here): ').strip("'\"").lstrip("& '").rstrip("'")  # Strip quotes that may be included when dragging from file explorer
+
+        clean_folder_name = f'{home}/clean file data/{year} clean events' # points to the clean file directory made by the first user input
+
+        clean_folder = sorted(os.listdir(os.path.join(clean_folder_name)))
+
+
+        for clean_file in clean_folder:
+            # print(clean_file)
+
+            monthly_echoes(year, clean_folder_name, clean_file)
+
+
+            # next step is to write a function that will go through the monthly organized files and plot the coordinates for each month to compare meteor sources across months; will do later
+
+        for m in range(1, 13):
+            # plot the coordinates for each month
+
+            monthly_plotter(year, m, clean_folder_name, clean_file, method, map_method=map_mode)
+
+
+    ## SOURCE PLOTTING STEP ##
+
+    # creating a map of the clean meteor sources based on their coordinates of ecliptic latitude and longitude
+    # echo_plot(scaled_lons, plot_lats, plot_vels, year, method)
+
+
+    if source_isolate:
+        echo_plot(plot_lons, plot_lats, plot_vels, year, method, source=source, mode='source', map_mode=map_mode, bounds=[(-150, 150), (-60, 90)])
+        vel_histo(plot_vels, plot_orbitals, year, method, source=source, mode='source')
+
+    else:
+        echo_plot(plot_lons, plot_lats, plot_vels, year, method, map_mode=map_mode, bounds=[(150, -150), (-60, 90)], data=datatype)
+        vel_histo(plot_vels, plot_orbitals, year, method)
+
+        # make the mode 'shower source' to see where the regions from shower_helio_coords cover
+        # echo_plot(c2h_lons, c2h_lats, plot_vels, year, method, map_mode=map_mode, bounds=shower_bounds, shower_helios=shower_helio_coords)
+
+
+        
+
+
+    ## SHOWER REMOVAL STEP ##
+
+    # Localizing and clearing out the meteor showers from the sporadic background
+
+
+    # all shower parsing operations below
+    if shower_isolate:
+
+        # will specify how many showers to work with - if input is 2, all shwoers will be parsed and filtered sequentially, with final_data being called using a list of all date/times containing shower meteors aftr all filtering is complete
+        num_showers = input('How many showers would you want to work with? (1 - only one, 2 - all of them): ')
+
+
+        if num_showers.strip() == '1':
+            index = 1
+            shower_name_input = input('Enter the abbreviation of the shower you\'d like to work with - select from the abbreviations: ARI, DSX, ETA, GEM, ORI, PER, QUA, SDA: ').upper().strip()
+
+        elif num_showers.strip() == '2':
+            index = len(shower_boundaries[year]) # making the below script iterate based on the input for number of showers to parse
+            
+        unique_days = [] # will store all dates/times associated with a shower meteor here, then will feed this to final_data to remove the 7 strong showers all at once from the dataset
+        active_slons = []
+
+        for i in range(index):
+
+            # shower_folder_name = input('Enter the folder name of the clean shower data (format of the ending folder should be \'YYYY clean events\'): ').strip("'\"")
+
+            shower_folder_name = f'{home}/clean file data/{year} clean events'
+
+            # user chooses the shower if input is 1
+            if num_showers.strip() == '1':
+                shower_name = shower_name_input
+
+            # goes over showers one by one based on index if input is 2
+            elif num_showers.strip() == '2':
+                shower_name = list(shower_rads.keys())[i]
+
+            shower_folder = sorted(os.listdir(shower_folder_name))
+
+            # shower_name = shower_folder[-1:-4] # should be last three letters of the user input
+            # print(shower_name)
+
+            # shower_name = input('Enter the abbreviation of the shower you\'d like to work with - select from the abbreviations: ARI, DSX, ETA, GEM, ORI, QUA, SDA: ').upper().strip()
+            # from here, the shower parser function should enter the clean file data folder and pick out the days the shower is active using specified solar longitude by a dictionary
+
+            # using Cel2Hel2Cel function call to grab the heliocentric location of the chosen meteor shower
+            shower_helios = shower_helio_coords[shower_name]
+
+            shower_velocity = shower_mean_velocities[shower_name]
+            
+            # instancizing the shower's data set here using year, and boundaries of each its coordinates for that year
+            dataset = Shower_Bounds(shower_name, year, shower_boundaries[year][shower_name][0], shower_boundaries[year][shower_name][1], shower_boundaries[year][shower_name][2])
+
+            lon_bounds, lat_bounds, vel_bounds = dataset.shower_radius(shower_helio_coords[shower_name], shower_mean_velocities[shower_name])
+
+            # lon_bounds, lat_bounds, vel_bounds = shower_radius(shower_name, shower_helios, shower_velocity, shower_bounds)
+
+            print(lon_bounds[0], lon_bounds[1], lon_bounds[0] < lon_bounds[1])  # should be True
+            print(lat_bounds[0], lat_bounds[1], lat_bounds[0] < lat_bounds[1])
+            print(vel_bounds[0], vel_bounds[1], vel_bounds[0] < vel_bounds[1])
+
+            print('shower bounds: ', lon_bounds, lat_bounds, vel_bounds)
+            
+            # get the solar longitudes of the showers from the filenames
+
+            # only from the files on days of when the shower is active
+            active_days = []
+            active_lons = []
+            active_lats = []
+            active_vels = []
+
+            active_axes = []
+            active_eccens = []
+            active_incls = []
+
+            active_dict = {} # want to store the above three values, keyed by filename
+
+            # only from the files 5 days before and after the shower is active; use this along with heat_map to generate a number density matrix for each day
+
+            outer_days = []
+            outer_lons = []
+            outer_lats = []
+            outer_vels = []
+
+            outer_axes = []
+            outer_eccens = []
+            outer_incls = []
+
+            # includes files of slon 5 days before and after the shower is active
+            full_days = []
+            full_lons = []
+            full_lats = []
+            full_vels = []
+
+            full_axes = []
+            full_eccens = []
+            full_incls = []
+
+            # main dictionary keyed by solar longitude, nested dictionaries keyed by date+time with values of RA/Dec
+            corr_radiants = {}
+
+            # to keep track of how many meteors are in the shower days and in the background days
+            shower_meteors = 0
+            background_meteors = 0
+            total_meteors = 0
+
+            # array of solar longitudes of a shower based on user input
+            input_slons = shower_slon[year][shower_name]
+            slon_peak = shower_slon_peaks[shower_name]
+            min_slon, max_slon = min(input_slons), max(input_slons)
+
+            slons_before = min_slon - 5
+            slons_after = max_slon + 5
+
+            outer_slons = list(range(slons_before, min_slon)) +  list(range(max_slon + 1, slons_after + 1))
+            
+            full_slons = list(range(slons_before, slons_after + 1)) # copy of the list to be used as one containing echoes 5 days before and after the shower appears
+
+            # print(input_slons)
+            # print(outer_slons)
+            # print(full_slons)
+
+            num_active_meteors = 0
+            num_outer_meteors = 0
+            total_shower_meteors = 0
+
+            # collecting the shower files here
+            for shower_file in shower_folder:
+
+                if shower_file[0:4].upper() == 'FULL':
+                    continue
+
+                file_slon = shower_file[11:14]
+                # print(file_slon)
+
+
+                if file_slon[0:2] == '00':
+                    file_slon = int(file_slon[2]) # taking the leading zero out from solar longitude
+                    # print(file_slon)
+
+
+                elif file_slon[0] == '0':
+                    file_slon = int(file_slon[1:]) # taking the leading zero out from solar longitude
+                    # print(file_slon)
+
+                else:
+                    file_slon = int(file_slon)
+                    # print(file_slon)
+                # if not satisfied, this step should be skipped for any file not within the specified range of solar longitudes based on the input shower
+                # should include somewhere here the 5 days before and after this range found below to calculate the average background flux for shower subtraction
+                if file_slon in full_slons:
+                    
+                    # using these files to plot the ec# for 2022 dsx, went from 2360 meteors to 99hoes seen from the shower
+                    if file_slon in input_slons:
+                        
+                        shower_lmda, shower_beta, shower_vel, shower_orbs, corr_shower_radiants, shower_meteor_count, shower_days = shower_parser(year, shower_folder_name, shower_file, file_slon, slon_peak, shower_rads, shower_rad_drifts, shower_name, method, slon_status='active', boundaries=[lon_bounds, lat_bounds])
+                        
+                        shower_lmda = scale(shower_lmda) # this step is important; keep here
+                        # apply to outer and update the counter to track meteors near the shower
+
+                        # masking step to isolate location of the shower and radiants within
+                        shower_lmda = np.asarray(shower_lmda)
+                        shower_beta = np.asarray(shower_beta)
+                        shower_vel = np.asarray(shower_vel)
+                        shower_days = np.asarray(shower_days)
+
+                        shower_axes = np.asarray(shower_orbs[0])
+                        shower_eccens = np.asarray(shower_orbs[1])
+                        shower_incls = np.asarray(shower_orbs[2])
+
+                        shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
+                                            (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
+                                            )
+                        
+                        print(f'Passing lmda condition: {np.sum((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]))}')
+                        print(f'Passing beta condition:  {np.sum((shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1]))}')
+                        print(f'Passing both:            {np.sum(shower_mask)}')
+                                        
+                        lmda_filtered = shower_lmda[shower_mask]
+                        beta_filtered = shower_beta[shower_mask]
+                        vels_filtered = shower_vel[shower_mask]
+                        days_filtered = shower_days[shower_mask]
+                
+                        
+                        # collects coordinates of the shower files, along with velocities
+                        # using these lists to calculate flux, which will be used for shower subtraction
+                        # active_days.extend(shower_days)
+                        # active_lons.extend(shower_lmda)
+                        # active_lats.extend(shower_beta)
+                        # active_vels.extend(shower_vel)
+
+                        active_days.extend(days_filtered)
+                        active_lons.extend(lmda_filtered)
+                        active_lats.extend(beta_filtered)
+                        active_vels.extend(vels_filtered)
+
+                        active_axes.extend(shower_axes)
+                        active_eccens.extend(shower_eccens)
+                        active_incls.extend(shower_incls)
+
+                        # corr_radiants[corr_shower_radiants] = corr_shower_radiants[file_slon]
+                        # corr_radiants.extend(corr_shower_radiants.items())
+                        corr_radiants[file_slon] = corr_shower_radiants
+
+                        # active_dict[shower_file] = {"ecl lon" : shower_lmda, "ecl lat" : shower_beta, "geo vel" : shower_vel}
+                        active_dict[shower_file] = {"ecl lon" : lmda_filtered, "ecl lat" : beta_filtered, "geo vel" : vels_filtered}
+
+                        # BEFORE MASK keeping track of number of meteors deemed close enough to the shower for a given solar longitude
+                        shower_meteors += shower_meteor_count
+                        
+
+                        # AFTER MASK
+                        num_active_meteors += len(lmda_filtered)
+                        total_meteors += len(lmda_filtered)
+
+                        # also store the file in a new directory here
+                        # will also want a way to copy sporadics to another file, or remove the shower meteors from this file using the background subtraction and 3 sigma test
+                    
+                    # using these to construct average sporadic number density matrices to subtract from the shower's number density matrix (heat map)
+                    elif file_slon in outer_slons:
+
+                        shower_lmda, shower_beta, shower_vel, shower_orbs, corr_background_radiants, background_meteor_count, shower_days = shower_parser(year, shower_folder_name, shower_file, file_slon, slon_peak, shower_rads, shower_rad_drifts, shower_name, method, slon_status='outer')
+
+                        shower_lmda = scale(shower_lmda)
+
+                        # masking step to isolate location of shower and radiants within
+                        shower_lmda = np.asarray(shower_lmda)
+                        shower_beta = np.asarray(shower_beta)
+                        shower_vel = np.asarray(shower_vel)
+                        shower_days = np.asarray(shower_days)
+
+                        shower_axes = np.asarray(shower_orbs[0])
+                        shower_eccens = np.asarray(shower_orbs[1])
+                        shower_incls = np.asarray(shower_orbs[2])
+
+                        shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
+                                            (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
+                                            )
+                        
+                        print(f'Passing lmda condition: {np.sum((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]))}')
+                        print(f'Passing beta condition:  {np.sum((shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1]))}')
+                        print(f'Passing both:            {np.sum(shower_mask)}')
+                                        
+                        lmda_filtered = shower_lmda[shower_mask]
+                        beta_filtered = shower_beta[shower_mask]
+                        vels_filtered = shower_vel[shower_mask]
+                        days_filtered = shower_days[shower_mask]
+
+                        print(len(outer_lons))
+
+                        outer_days.extend(days_filtered)
+                        outer_lons.extend(lmda_filtered)
+                        outer_lats.extend(beta_filtered)
+                        outer_vels.extend(vels_filtered)
+
+                        outer_axes.extend(shower_axes)
+                        outer_eccens.extend(shower_eccens)
+                        outer_incls.extend(shower_incls)
+
+                        corr_radiants[file_slon] = corr_background_radiants
+
+                        # BEFORE MASK: keeping track of number of meteors close enough to the source in background days of the shower
+                        background_meteors += background_meteor_count
+                        
+                        
+                        # AFTER MASK
+
+                        num_outer_meteors += len(lmda_filtered)
+                        total_meteors += len(lmda_filtered)
+
+                    # storing both active and outer file data to these lists
+                    full_days.extend(shower_days)
+                    full_lons.extend(shower_lmda)
+                    full_lats.extend(shower_beta)
+                    full_vels.extend(shower_vel)
+
+                    full_axes.extend(shower_axes)
+                    full_eccens.extend(shower_eccens)
+                    full_incls.extend(shower_incls)
+
+                    total_shower_meteors += num_active_meteors + num_outer_meteors
+                    
+                    
+                    # plots each day/solar longitude
+                    # echo_plot(shower_lmda, shower_beta, year)
+                
+                else:
+                    continue
+
+            # print(active_dict)
+            
+            # scaling longitudes 
+            scaled_active_lons = scale(active_lons) # use shower radiants and find lmda/beta using c2h 
+                                                    # and create bounds for each day of 5 degrees in between each computed value
+
+            scaled_outer_lons = scale(outer_lons) # could split this list into two - one for days before, one for days after
+
+            scaled_full_lons = scale(full_lons)
+
+            active_orbitals = []
+            outer_orbitals = []
+            full_orbitals = []
+
+            active_orbitals.append(active_axes)
+            active_orbitals.append(active_eccens)
+            active_orbitals.append(active_incls)
+
+            outer_orbitals.append(outer_axes)
+            outer_orbitals.append(outer_eccens)
+            outer_incls.append(outer_incls)
+
+            full_orbitals.append(full_axes)
+            full_orbitals.append(full_eccens)
+            full_orbitals.append(full_incls)
+
+            # new_lons, new_lats, new_vel = background_subtract(year, outer_lons, outer_lats, outer_vels, shower_name, method, slon_status='active')
+
+            # print(new_lons, new_lats, new_vel)
+
+            # scaled_new_lons = scale(new_lons)
+
+            # plot of the active shower
+            h_shower = echo_plot(active_lons, active_lats, active_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode) # , bounds=[lcomp_bounds, bcomp_bounds]
+            # h_shower = heat_map(active_lons, active_lats, year, )
+            print('Number of shower meteors before region masking: ', shower_meteors)
+            print('Number of shower meteors after region masking: ', num_active_meteors)
+
+            shower_lon_bounds = [min(scaled_active_lons), max(scaled_active_lons)]
+            shower_lat_bounds = [min(active_lats), max(active_lats)]
+            shower_vel_bounds = [min(active_vels), max(active_vels)]
+
+            # plot of the sporadic background - take the background matrix from here
+            h_background = echo_plot(outer_lons, outer_lats, outer_vels, year, method, shower=shower_name, mode='background', map_mode=map_mode) # , bounds=[lcomp_bounds, bcomp_bounds]
+            # print('mean:', np.mean(h_background))
+
+            print('Number of background meteors before region masking: ', background_meteors)
+            print('Number of background meteors after region masking: ', num_outer_meteors)
+
+            print('\nNumber of total meteors after region masking: ', total_meteors)
+
+            # one density matrix for both 5 days before/after
+            # two density matrices for 5 days before, 5 days after
+
+            # print(corr_radiants)
+
+
+            for sl, meteor  in corr_radiants.items(): # iterating over nested dictionaries keyed by date+time. parent dictionary has keys of solar longitude
+
+                # skips empty dictionaries; shouldn't be empty, will have to go over filtering of ra/dec in shower parser
+                if meteor == {}:
+                    continue
+
+                for obs, cels in meteor.items():
+
+                    ra, dec = cels['RA'], cels['Dec']
+
+                    cel = getvec(ra, dec)
+
+                    hel = cel2hel(cel, sl) # not quite 1-1 in relation to observed coordinates from orbit files
+
+                    lmda, beta = getangle(hel)
+
+                    # print('\nSolar Longitude: ', sl, 'Date/Time: ', obs)
+                    # print('\nCelestial: ', ra, dec)
+                    # print('\nHeliocentric ', lmda, beta)
+
+            # for i, array in enumerate(h_background):
+            #     print(i)
+            #     print('mean;', np.mean(h_background[0][i]))
+            #     # print('shape:', h_background[i].shape)
+            #     print(h_background)
+            #     background_avg = np.mean(h_background[0][i])
+
+            #     h_background[0][:] = background_avg
+            
+            # print(h_background) # currently only sets the last array's average to all elements in the parent array 
+            # print('sizes:', h_shower[3].size, h_background[3].size)
+
+            background_avgs = np.mean(h_background[0], axis=1, keepdims=True)
+
+            new_background = np.broadcast_to(background_avgs, h_background[0].shape)
+            # print(new_background)
+
+            # plot of radiants after new subtraction method
+            # h_new = echo_plot(scaled_new_lons, new_lats, new_vel, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
+
+            # print(h_shower[0], h_background[0])
+            # instead of doing the radiant check on background showers, take all meteors from that day, and subtract those only within the bounds where the active shower radiants are found in
+            h_diff = h_shower[0] - new_background # need to remove shower days here somehow
+            # make all elements of h_background an average of the number distribution then subtract
+            h_diff = np.clip(h_diff, 0, None)
+
+            h_lons, h_lats = h_shower[1], h_shower[2]
+
+            # print(h_diff) # run this in echo plot? needs to be in the function
+            # print(np.mean(h_diff)) # average is 0.029, check for negative numbers?
+
+            # plt.figure(figsize=(10,5))
+            # plt.imshow(h_diff.T, origin='lower', cmap='plasma', extent=[h_lons[0], h_lons[-1], h_lats[0], h_lats[-1]])
+
+            # plt.colorbar(label='Shower Count Difference')
+            # plt.xlabel('Ecliptic Longitude')
+            # plt.ylabel('Ecliptic Latitude')
+            # # plt.gca().invert_xaxis()
+            
+            # plt.title('Shower minus background density')
+            # plt.show()
+
+            # effectively getting the same plot as before subtraction
+            # applying to 3d plot to see if there is a difference
+
+            # 3d plot of shower day echoes - create the convex hull around radiants that survive the 3 sigma test following background subtraction
+            # echo_3d_plot(scaled_active_lons, active_lats, active_vels, year, shower=shower_name, mode='shower')
+
+            # 3d plot of background day echoes
+            # masked_lons, masked_lats, masked_vels = echo_3d_plot(scaled_outer_lons, outer_lats, outer_vels, year, shower=shower_name, mode='shower', bounds=[lcomp_bounds, bcomp_bounds, shower_vel_bounds])
+
+            # next would be to plot active days with counts = (active counts - outer counts)
+
+            # histogram of velocities
+            # vel_histo(full_vels, year, method, shower=shower_name, mode='shower') 
+            # vel_histo(active_vels, year, method, shower=shower_name, mode='shower') 
+            # vel_histo(masked_vels, year, method, shower=shower_name, mode='shower') # shows only the background sporadics in the bounds of the shower made from shower_parser
+
+            ## VOXEL PLOTTING AND CONVEX HULL STEPS BELOW ## 
+
+            # no meteors should be removed from the two calls below
+            H_shower, edges_shower, shower_lons, shower_lats, shower_vels = voxel_map(active_lons, active_lats, active_vels, year, name=shower_name)
+            H_background, edges_background, background_lons, background_lats, background_vels = voxel_map(outer_lons, outer_lats, outer_vels, year, name=shower_name, bounds=[lon_bounds, lat_bounds, vel_bounds])
+
+            print('sizes:', edges_shower[0].size, edges_background[0].size, edges_shower[1].size, edges_background[1].size, edges_shower[2].size, edges_background[2].size)
+
+            Background_avgs = np.mean(H_background, axis=1, keepdims=True)
+
+            new_Background = np.broadcast_to(Background_avgs, H_background.shape)
+            # print(new_Background)
+            
+
+            # after background number density subtraction
+            # H_diff = H_shower  - new_Background
+
+            # print(H_shower)
+
+            # for date in H_shower:
+                # if date not in h_diff dates:
+                    # remove date from shower date list
+
+            # over filtering, each coordinate is checked independently regardless if its corresponding coordinates by index do not match
+            diff_lons, diff_lats, diff_vels, diff_days = shower_lons.copy(), shower_lats.copy(), shower_vels.copy(), active_days.copy()
+            back_lons, back_lats, back_vels, back_days = shower_lons.copy(), shower_lats.copy(), shower_vels.copy(), active_days.copy()
+
+            print('Before 3d background masking: ', len(diff_lons), len(diff_lats), len(diff_vels), len(diff_days))
+
+
+            
+            # defining arrays for background masking
+            diff_lons =np.asarray(diff_lons)
+            diff_lats = np.asarray(diff_lats)
+            diff_vels = np.asarray(diff_vels)
+            diff_days = np.asarray(diff_days)
+
+            back_lons = np.asarray(back_lons)
+            back_lats = np.asarray(back_lats)
+            back_vels = np.asarray(back_vels)
+            back_days = np.asarray(back_days)
+
+            active_days = np.asarray(active_days)
+            outer_days = np.asarray(outer_days)
+
+            # # doing background subtraction for 3d distribution here
+            # shower_mask = (
+            #     (~np.isin(diff_lons, background_lons)) &
+            #     (~np.isin(diff_lats, background_lats)) &
+            #     (~np.isin(diff_vels, background_vels)) &
+            #     (~np.isin(diff_days, outer_days))
+            # )
+
+            # back_mask = (
+            #     (np.isin(back_lons, background_lons)) &
+            #     (np.isin(back_lats, background_lats)) &
+            #     (np.isin(back_vels, background_vels)) &
+            #     (np.isin(back_days, outer_days))
+            # )
+
+
+            # build a set of background triplets for fast lookup
+            background_triplets = set(zip(
+                np.round(background_lons, 6),  # round to avoid float precision issues
+                np.round(background_lats, 6),
+                np.round(background_vels, 6)
+            ))
+
+            # check each active meteor's triplet against the background set
+            active_triplets = list(zip(
+                np.round(diff_lons, 6),
+                np.round(diff_lats, 6),
+                np.round(diff_vels, 6)
+            ))
+
+            shower_mask = np.array([t not in background_triplets for t in active_triplets])
+            back_mask   = np.array([t in background_triplets     for t in active_triplets])
+
+
+            # # print(diff_lons, background_lons)
+
+            # # background subtracted coordinates ; might not need H_shower - H_background step with this in place
+            diff_lons = diff_lons[shower_mask]
+            diff_lats = diff_lats[shower_mask]
+            diff_vels = diff_vels[shower_mask]
+            diff_days = diff_days[shower_mask] # should i be removing events from this background subtraction?
+
+            back_lons = back_lons[back_mask]
+            back_lats = back_lats[back_mask]
+            back_vels = back_vels[back_mask]
+            back_days = back_days[back_mask]
+            # print(shower_mask, back_mask)
+            # print('days kept vs days removed: ', len(diff_days), len(back_days)) # does nothing for 2025 dsx
+
+            
+            print('After 3d background masking: ', len(diff_lons), len(diff_lats), len(diff_vels), len(diff_days))
+
+            # print(diff_days)
+
+            # shower_dict = {}
+
+            # for l, b, v, d in zip (shower_lons, shower_lats, shower_vels, active_days):
+
+            #     if l in background_lons and b in background_lats and v in background_vels:
+                    
+            #         # meteors in the shower after background subtraction
+            #         diff_lons.remove(l)
+            #         diff_lats.remove(b)
+            #         diff_vels.remove(v)
+            #         diff_days.remove(d)
+
+            #         # meteors removed following background subtraction
+            #         back_lons.append(l)
+            #         back_lats.append(b)
+            #         back_vels.append(v)
+            #         back_days.append(d)
+
+            #     # want the meteors not in the above regions to move on to further filtering
+            #     else:
+            #         shower_dict[d] = {'lmda' : l, 'beta' : b, 'vel' : v}
+            
+            # echo_3d_plot(diff_lons, diff_lats, diff_vels, year, shower=shower_name, mode='shower')
+            # echo_3d_plot(back_lons, back_lats, back_vels, year, shower=shower_name, mode='shower')
+        
+
+            diff_count = len(shower_lons) - len(diff_lons) # or len(back_lons)
+            print(diff_count, len(back_lons), 'these should be the same\n')
+
+            H_diff, edges_diff, lons_diff, lats_diff, vels_diff = voxel_map(diff_lons, diff_lats, diff_vels, year, shower_name, threshold=0)
+            # print(H_diff)
+
+            # lon/lat stays mostly the same, though velocity shifts upward after using np.isin
+        
+            
+            print(f'\nFrom voxel subtraction, {diff_count} meteors were removed from the shower for overlapping with background sporadics.\n')
+            print(f'Currently, there are {len(diff_lons)} meteors contained within the shower\'s radiant\n')
+            # voxel_map2(H_diff, edges_shower, scaled_active_lons, active_lats, threshold=5)
+
+            # echo_plot(diff_lons2, diff_lats2, diff_vels2, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
+            # print(shower_dict)
+            
+            # after 3 sigma clip ; do date/time removal here next
+            H_prime, high_count_meteors, shower_coords = voxel_subtract(edges_diff, lons_diff, lats_diff, vels_diff, diff_days, year, H_diff, new_Background, shower_name, method, threshold=3) # will need to get lats/lons from this step and feed to coord_sigma
+            # print(H_prime)
+
+            # unpacking 3 sigma count meteors
+            prime_lons, prime_lats, prime_vels, prime_days = shower_coords
+
+            print('After voxel count subtraction: ', prime_lons, prime_lats, prime_vels, prime_days)
+            print(len(prime_lons))
+            # # remaining meteors after voxel subtract
+            # lon1, lat1, vel1 = [], [], []
+
+            # # removed meteors after voxel subtract
+            # lon2, lat2, vel2 = [], [], []
+
+            # for d in shower_meteor_dict.values():
+
+            #     l, b, v = d['lmda'], d['beta'], d['vel']
+
+            #     lon1.append(l)
+            #     lat1.append(b)
+            #     vel1.append(v)
+            
+            # for d in removed_dict.values():
+
+            #     l, b, v = d['lmda'], d['beta'], d['vel']
+
+            #     lon2.append(l)
+            #     lat2.append(b)
+            #     vel2.append(v)
+
+            # voxel_map(lon1, lat1, vel1, year)
+            # print('Num remaining meteors: ', len(shower_meteor_dict))
+            # voxel_map(lon2, lat2, vel2, year)
+            # print('Num removed meteors: ', len(removed_dict))
+
+            # voxel_map2(H_diff, edges_shower, scaled_active_lons, active_lats, active_vels, threshold=0)
+
+            # strictly to visualize the voxels - the two calls below give different plots
+            # voxel_map_counts(H_prime, edges_shower, prime_lons, prime_lats, prime_vels, threshold=5) # set threshold=0 to see if makes difference after threshold condition made in voxel subtract
+            H_prime2, edges_prime2, prime_lons2, prime_lats2, prime_vels2 = voxel_map(prime_lons, prime_lats, prime_vels, year, name=shower_name, threshold=0)
+            # creates the convex hull around the same shape made by voxels using the function call right above
+            # voxel_with_hull(H_prime, edges_shower, prime_lons, prime_lats, prime_vels, threshold=5)
+
+            # print(len(prime_lons), len(prime_lons2))
+            # the counts are not being passed onto the coordinate test, which might be why we see little change in 3sigma test
+            final_lons, final_lats, final_vels, final_days = coord_sigma(prime_lons, prime_lats, prime_vels, prime_days, shower_helios, full_slons, year)
+            # for the convex hull call, I will need the set of meteors contained within the remaining voxels
+            # saving these meteors to a new file is the next step
+
+            print('\nBefore background subtraction:', len(active_lons), 'After background subtraction: ', len(diff_lons),'After 3 sigma test on voxel counts: ', high_count_meteors, 'After 3 sigma test on coordinates: ', len(final_lons)) # currently not changing in the coord_sigma test -> checking within 3 sigma which might be too high
+
+            # echo_3d_plot(diff_lons, diff_lats, diff_vels, year, shower=shower_name, mode='shower')
+            # echo_plot(final_lons, final_lats, final_vels, year, method, shower=shower_name, mode='shower', map_mode=map_mode)
+
+            # creating the voxels made from coord subtract step
+            H_final, edges_final, final_lons2, final_lats2, final_vels2 = voxel_map(final_lons, final_lats, final_vels, year, name=shower_name, threshold=0, save=True)
+
+
+            # voxel_map_counts(H_final, edges_final, final_lons2, final_lats2, final_vels2, threshold=5)
+            print(f'After all checks, there are {len(final_lons2)} meteors that will be found within the convex hull')
+            voxel_with_hull(H_final, edges_final, final_lons2, final_lats2, final_vels2, shower_name, threshold=0) 
+            
+            # histogram of orbital parameters for each meteor shower run in the code
+            # vel_histo(final_vels, active_orbitals, year, method, shower=shower_name, mode='shower')
+            
+            # adding the date/times of shower meteors to one master list for total shower removal
+            unique_days.extend(final_days)
+
+            for s in input_slons:
+                # only need to add dates to the master slon list once
+                if s not in active_slons:
+                    active_slons.append(s)
+            
+
+        # should note that this threshold does not effec the number of meteors saved as shower meteors
+        # can be implimented before coord sigma in a seperate function or in voxel subtract
+
+        # next step after the hull is made is to take the remaining dates, parse the original files and take the lines with these dates out of the files
+        # this gives a data set of sporadic only meteors to work with
+        # meteors taken out are ONLY within the shower - there will still be meteors on active days that are not within the hull and can be grouped with sporadic
+
+        # for each date+time in final_days
+            # go through each file in clean file data/ {year} clean events/ {year} {name} active within the solar longitudes of the shower
+            # if date+time is in any of the files:
+                # remove that line from the file
+            
+        # print(final_days)
+        # print(input_slons)
+
+        removed_count = 0
+
+        sporadic_lons = []
+        sporadic_lats = []
+        sporadic_vels = []
+
+        for file in shower_folder:
+            # print(file)
+
+            if file[0:4] == 'FULL':
+                continue
+
+            # print(active_slons)
+            print(len(unique_days)) 
+
+            meteor_count, file_lons, file_lats, file_vels = final_data(shower_folder_name, file, unique_days, active_slons, mode='shower')
+
+            print(meteor_count) # this is the correct meteor count in comparison to the results from the 7 meteors in this script
+
+            # keeping track of how many meteors this function removes, should be the same as the length of the final days list
+            removed_count += meteor_count
+
+            scaled_file_lons = scale(file_lons)
+
+            sporadic_lons.extend(scaled_file_lons)
+            sporadic_lats.extend(file_lats)
+            sporadic_vels.extend(file_vels)
+        
+        print('Number of date/time corresponding to shower meteors: ', len(unique_days))
+        print('Number of lines skipped: ', removed_count)
+        print('Number of meteors before shower removal: ', num_echo_locs)
+        # these lines should give the same number
+        
+        echo_plot(sporadic_lons, sporadic_lats, sporadic_vels, year, method, mode='no shower', map_mode=map_mode)
+
+
+### FILTERED DATA RUNS THROUGH THIS BRANCH ###
+elif raw_or_clean == '1':
+
+    method='filtered'
+    map_mode='density'
+
+    # with the filtered data the following are hoped to be done eventually
+        # shower removal
+        # weighted distribution using limiting mass/energy
+        # atmospheric bias correction
     
+    shower_folder = '/home/zaubs/Desktop/radar/clean file data/all clean events'
 
-
-## SHOWER REMOVAL STEP ##
-
-# Localizing and clearing out the meteor showers from the sporadic background
-
-# will specify how many showers to work with - if input is 2, all shwoers will be parsed and filtered sequentially, with final_data being called using a list of all date/times containing shower meteors aftr all filtering is complete
-num_showers = input('How many showers would you want to work with? (1 - only one, 2 - all of them): ')
-
-
-if num_showers.strip() == '1':
-    index = 1
-    shower_name_input = input('Enter the abbreviation of the shower you\'d like to work with - select from the abbreviations: ARI, DSX, ETA, GEM, ORI, PER, QUA, SDA: ').upper().strip()
-
-elif num_showers.strip() == '2':
-    index = len(shower_boundaries[year]) # making the below script iterate based on the input for number of showers to parse
-
-unique_days = [] # will store all dates/times associated with a shower meteor here, then will feed this to final_data to remove the 7 strong showers all at once from the dataset
-active_slons = []
-
-# all shower parsing operations below
-if shower_isolate:
+    index = len(shower_boundaries['all']) # making the below script iterate based on the input for number of showers to parse
+        
+    unique_days = [] # will store all dates/times associated with a shower meteor here, then will feed this to final_data to remove the 7 strong showers all at once from the dataset
+    active_slons = []
 
     for i in range(index):
 
+        year='all'
+
         # shower_folder_name = input('Enter the folder name of the clean shower data (format of the ending folder should be \'YYYY clean events\'): ').strip("'\"")
 
-        shower_folder_name = f'{home}/clean file data/{year} clean events'
+        shower_folder_name = f'{home}/clean file data/all clean events'
 
-        # user chooses the shower if input is 1
-        if num_showers.strip() == '1':
-            shower_name = shower_name_input
-
-        # goes over showers one by one based on index if input is 2
-        elif num_showers.strip() == '2':
-            shower_name = list(shower_rads.keys())[i]
+        # goes over showers one by one based on index (length of shower dictionary)
+        shower_name = list(shower_rads.keys())[i]
 
         shower_folder = sorted(os.listdir(shower_folder_name))
 
@@ -3783,167 +4550,177 @@ if shower_isolate:
         total_shower_meteors = 0
 
         # collecting the shower files here
-        for shower_file in shower_folder:
+        for sol_lon in shower_folder:
 
-            if shower_file[0:4].upper() == 'FULL':
-                continue
-
-            file_slon = shower_file[11:14]
-            # print(file_slon)
-
-
-            if file_slon[0:2] == '00':
-                file_slon = int(file_slon[2]) # taking the leading zero out from solar longitude
-                # print(file_slon)
-
-
-            elif file_slon[0] == '0':
-                file_slon = int(file_slon[1:]) # taking the leading zero out from solar longitude
-                # print(file_slon)
-
-            else:
-                file_slon = int(file_slon)
-                # print(file_slon)
-            # if not satisfied, this step should be skipped for any file not within the specified range of solar longitudes based on the input shower
-            # should include somewhere here the 5 days before and after this range found below to calculate the average background flux for shower subtraction
-            if file_slon in full_slons:
-                
-                # using these files to plot the ec# for 2022 dsx, went from 2360 meteors to 99hoes seen from the shower
-                if file_slon in input_slons:
-                    
-                    shower_lmda, shower_beta, shower_vel, shower_orbs, corr_shower_radiants, shower_meteor_count, shower_days = shower_parser(year, shower_folder_name, shower_file, file_slon, slon_peak, shower_rads, shower_rad_drifts, shower_name, method, slon_status='active', boundaries=[lon_bounds, lat_bounds])
-                    
-                    shower_lmda = scale(shower_lmda) # this step is important; keep here
-                    # apply to outer and update the counter to track meteors near the shower
-
-                    # masking step to isolate location of the shower and radiants within
-                    shower_lmda = np.asarray(shower_lmda)
-                    shower_beta = np.asarray(shower_beta)
-                    shower_vel = np.asarray(shower_vel)
-                    shower_days = np.asarray(shower_days)
-
-                    shower_axes = np.asarray(shower_orbs[0])
-                    shower_eccens = np.asarray(shower_orbs[1])
-                    shower_incls = np.asarray(shower_orbs[2])
-
-                    shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
-                                        (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
-                                        )
-                    
-                    print(f'Passing lmda condition: {np.sum((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]))}')
-                    print(f'Passing beta condition:  {np.sum((shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1]))}')
-                    print(f'Passing both:            {np.sum(shower_mask)}')
-                                    
-                    lmda_filtered = shower_lmda[shower_mask]
-                    beta_filtered = shower_beta[shower_mask]
-                    vels_filtered = shower_vel[shower_mask]
-                    days_filtered = shower_days[shower_mask]
+            print(sol_lon)
             
+            # in the total dataset, all events are organized by solar longitude
+            sub_shower_folder_name = f'{shower_folder_name}/{sol_lon}' 
+            sub_shower_folder = os.listdir(os.path.join(sub_shower_folder_name))
+
+            for shower_file in sub_shower_folder:
+
+                current_year = shower_file[6:10]
+
+                if shower_file[0:4].upper() == 'FULL':
+                    continue
+
+                file_slon = shower_file[11:14]
+                # print(file_slon)
+
+
+                if file_slon[0:2] == '00':
+                    file_slon = int(file_slon[2]) # taking the leading zero out from solar longitude
+                    # print(file_slon)
+
+
+                elif file_slon[0] == '0':
+                    file_slon = int(file_slon[1:]) # taking the leading zero out from solar longitude
+                    # print(file_slon)
+
+                else:
+                    file_slon = int(file_slon)
+                    # print(file_slon)
+                # if not satisfied, this step should be skipped for any file not within the specified range of solar longitudes based on the input shower
+                # should include somewhere here the 5 days before and after this range found below to calculate the average background flux for shower subtraction
+                if file_slon in full_slons:
                     
-                    # collects coordinates of the shower files, along with velocities
-                    # using these lists to calculate flux, which will be used for shower subtraction
-                    # active_days.extend(shower_days)
-                    # active_lons.extend(shower_lmda)
-                    # active_lats.extend(shower_beta)
-                    # active_vels.extend(shower_vel)
-
-                    active_days.extend(days_filtered)
-                    active_lons.extend(lmda_filtered)
-                    active_lats.extend(beta_filtered)
-                    active_vels.extend(vels_filtered)
-
-                    active_axes.extend(shower_axes)
-                    active_eccens.extend(shower_eccens)
-                    active_incls.extend(shower_incls)
-
-                    # corr_radiants[corr_shower_radiants] = corr_shower_radiants[file_slon]
-                    # corr_radiants.extend(corr_shower_radiants.items())
-                    corr_radiants[file_slon] = corr_shower_radiants
-
-                    # active_dict[shower_file] = {"ecl lon" : shower_lmda, "ecl lat" : shower_beta, "geo vel" : shower_vel}
-                    active_dict[shower_file] = {"ecl lon" : lmda_filtered, "ecl lat" : beta_filtered, "geo vel" : vels_filtered}
-
-                    # BEFORE MASK keeping track of number of meteors deemed close enough to the shower for a given solar longitude
-                    shower_meteors += shower_meteor_count
                     
+                    if file_slon in input_slons:
+                        
+                        shower_lmda, shower_beta, shower_vel, shower_orbs, corr_shower_radiants, shower_meteor_count, shower_days = shower_parser(current_year, sub_shower_folder_name, shower_file, file_slon, slon_peak, shower_rads, shower_rad_drifts, shower_name, method, slon_status='active', boundaries=[lon_bounds, lat_bounds])
+                        
+                        shower_lmda = scale(shower_lmda) # this step is important; keep here
+                        # apply to outer and update the counter to track meteors near the shower
 
-                    # AFTER MASK
-                    num_active_meteors += len(lmda_filtered)
-                    total_meteors += len(lmda_filtered)
+                        # masking step to isolate location of the shower and radiants within
+                        shower_lmda = np.asarray(shower_lmda)
+                        shower_beta = np.asarray(shower_beta)
+                        shower_vel = np.asarray(shower_vel)
+                        shower_days = np.asarray(shower_days)
 
-                    # also store the file in a new directory here
-                    # will also want a way to copy sporadics to another file, or remove the shower meteors from this file using the background subtraction and 3 sigma test
+                        shower_axes = np.asarray(shower_orbs[0])
+                        shower_eccens = np.asarray(shower_orbs[1])
+                        shower_incls = np.asarray(shower_orbs[2])
+
+                        shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
+                                            (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
+                                            )
+                        
+                        print(f'Passing lmda condition: {np.sum((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]))}')
+                        print(f'Passing beta condition:  {np.sum((shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1]))}')
+                        print(f'Passing both:            {np.sum(shower_mask)}')
+                                        
+                        lmda_filtered = shower_lmda[shower_mask]
+                        beta_filtered = shower_beta[shower_mask]
+                        vels_filtered = shower_vel[shower_mask]
+                        days_filtered = shower_days[shower_mask]
                 
-                # using these to construct average sporadic number density matrices to subtract from the shower's number density matrix (heat map)
-                elif file_slon in outer_slons:
+                        
+                        # collects coordinates of the shower files, along with velocities
+                        # using these lists to calculate flux, which will be used for shower subtraction
+                        # active_days.extend(shower_days)
+                        # active_lons.extend(shower_lmda)
+                        # active_lats.extend(shower_beta)
+                        # active_vels.extend(shower_vel)
 
-                    shower_lmda, shower_beta, shower_vel, shower_orbs, corr_background_radiants, background_meteor_count, shower_days = shower_parser(year, shower_folder_name, shower_file, file_slon, slon_peak, shower_rads, shower_rad_drifts, shower_name, method, slon_status='outer')
+                        active_days.extend(days_filtered)
+                        active_lons.extend(lmda_filtered)
+                        active_lats.extend(beta_filtered)
+                        active_vels.extend(vels_filtered)
 
-                    shower_lmda = scale(shower_lmda)
+                        active_axes.extend(shower_axes)
+                        active_eccens.extend(shower_eccens)
+                        active_incls.extend(shower_incls)
 
-                    # masking step to isolate location of shower and radiants within
-                    shower_lmda = np.asarray(shower_lmda)
-                    shower_beta = np.asarray(shower_beta)
-                    shower_vel = np.asarray(shower_vel)
-                    shower_days = np.asarray(shower_days)
+                        # corr_radiants[corr_shower_radiants] = corr_shower_radiants[file_slon]
+                        # corr_radiants.extend(corr_shower_radiants.items())
+                        corr_radiants[file_slon] = corr_shower_radiants
 
-                    shower_axes = np.asarray(shower_orbs[0])
-                    shower_eccens = np.asarray(shower_orbs[1])
-                    shower_incls = np.asarray(shower_orbs[2])
+                        # active_dict[shower_file] = {"ecl lon" : shower_lmda, "ecl lat" : shower_beta, "geo vel" : shower_vel}
+                        active_dict[shower_file] = {"ecl lon" : lmda_filtered, "ecl lat" : beta_filtered, "geo vel" : vels_filtered}
 
-                    shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
-                                        (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
-                                        )
+                        # BEFORE MASK keeping track of number of meteors deemed close enough to the shower for a given solar longitude
+                        shower_meteors += shower_meteor_count
+                        
+
+                        # AFTER MASK
+                        num_active_meteors += len(lmda_filtered)
+                        total_meteors += len(lmda_filtered)
+
+                        # also store the file in a new directory here
+                        # will also want a way to copy sporadics to another file, or remove the shower meteors from this file using the background subtraction and 3 sigma test
                     
-                    print(f'Passing lmda condition: {np.sum((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]))}')
-                    print(f'Passing beta condition:  {np.sum((shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1]))}')
-                    print(f'Passing both:            {np.sum(shower_mask)}')
-                                    
-                    lmda_filtered = shower_lmda[shower_mask]
-                    beta_filtered = shower_beta[shower_mask]
-                    vels_filtered = shower_vel[shower_mask]
-                    days_filtered = shower_days[shower_mask]
+                    # using these to construct average sporadic number density matrices to subtract from the shower's number density matrix (heat map)
+                    elif file_slon in outer_slons:
 
-                    print(len(outer_lons))
+                        shower_lmda, shower_beta, shower_vel, shower_orbs, corr_background_radiants, background_meteor_count, shower_days = shower_parser(current_year, sub_shower_folder_name, shower_file, file_slon, slon_peak, shower_rads, shower_rad_drifts, shower_name, method, slon_status='outer')
 
-                    outer_days.extend(days_filtered)
-                    outer_lons.extend(lmda_filtered)
-                    outer_lats.extend(beta_filtered)
-                    outer_vels.extend(vels_filtered)
+                        shower_lmda = scale(shower_lmda)
 
-                    outer_axes.extend(shower_axes)
-                    outer_eccens.extend(shower_eccens)
-                    outer_incls.extend(shower_incls)
+                        # masking step to isolate location of shower and radiants within
+                        shower_lmda = np.asarray(shower_lmda)
+                        shower_beta = np.asarray(shower_beta)
+                        shower_vel = np.asarray(shower_vel)
+                        shower_days = np.asarray(shower_days)
 
-                    corr_radiants[file_slon] = corr_background_radiants
+                        shower_axes = np.asarray(shower_orbs[0])
+                        shower_eccens = np.asarray(shower_orbs[1])
+                        shower_incls = np.asarray(shower_orbs[2])
 
-                    # BEFORE MASK: keeping track of number of meteors close enough to the source in background days of the shower
-                    background_meteors += background_meteor_count
+                        shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
+                                            (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
+                                            )
+                        
+                        print(f'Passing lmda condition: {np.sum((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]))}')
+                        print(f'Passing beta condition:  {np.sum((shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1]))}')
+                        print(f'Passing both:            {np.sum(shower_mask)}')
+                                        
+                        lmda_filtered = shower_lmda[shower_mask]
+                        beta_filtered = shower_beta[shower_mask]
+                        vels_filtered = shower_vel[shower_mask]
+                        days_filtered = shower_days[shower_mask]
+
+                        print(len(outer_lons))
+
+                        outer_days.extend(days_filtered)
+                        outer_lons.extend(lmda_filtered)
+                        outer_lats.extend(beta_filtered)
+                        outer_vels.extend(vels_filtered)
+
+                        outer_axes.extend(shower_axes)
+                        outer_eccens.extend(shower_eccens)
+                        outer_incls.extend(shower_incls)
+
+                        corr_radiants[file_slon] = corr_background_radiants
+
+                        # BEFORE MASK: keeping track of number of meteors close enough to the source in background days of the shower
+                        background_meteors += background_meteor_count
+                        
+                        
+                        # AFTER MASK
+
+                        num_outer_meteors += len(lmda_filtered)
+                        total_meteors += len(lmda_filtered)
+
+                    # storing both active and outer file data to these lists
+                    full_days.extend(shower_days)
+                    full_lons.extend(shower_lmda)
+                    full_lats.extend(shower_beta)
+                    full_vels.extend(shower_vel)
+
+                    full_axes.extend(shower_axes)
+                    full_eccens.extend(shower_eccens)
+                    full_incls.extend(shower_incls)
+
+                    total_shower_meteors += num_active_meteors + num_outer_meteors
                     
                     
-                    # AFTER MASK
-
-                    num_outer_meteors += len(lmda_filtered)
-                    total_meteors += len(lmda_filtered)
-
-                # storing both active and outer file data to these lists
-                full_days.extend(shower_days)
-                full_lons.extend(shower_lmda)
-                full_lats.extend(shower_beta)
-                full_vels.extend(shower_vel)
-
-                full_axes.extend(shower_axes)
-                full_eccens.extend(shower_eccens)
-                full_incls.extend(shower_incls)
-
-                total_shower_meteors += num_active_meteors + num_outer_meteors
+                    # plots each day/solar longitude
+                    # echo_plot(shower_lmda, shower_beta, year)
                 
-                
-                # plots each day/solar longitude
-                # echo_plot(shower_lmda, shower_beta, year)
-            
-            else:
-                continue
+                else:
+                    continue
 
         # print(active_dict)
         
@@ -4203,7 +4980,7 @@ if shower_isolate:
         
         # echo_3d_plot(diff_lons, diff_lats, diff_vels, year, shower=shower_name, mode='shower')
         # echo_3d_plot(back_lons, back_lats, back_vels, year, shower=shower_name, mode='shower')
-    
+
 
         diff_count = len(shower_lons) - len(diff_lons) # or len(back_lons)
         print(diff_count, len(back_lons), 'these should be the same\n')
@@ -4212,7 +4989,7 @@ if shower_isolate:
         # print(H_diff)
 
         # lon/lat stays mostly the same, though velocity shifts upward after using np.isin
-    
+
         
         print(f'\nFrom voxel subtraction, {diff_count} meteors were removed from the shower for overlapping with background sporadics.\n')
         print(f'Currently, there are {len(diff_lons)} meteors contained within the shower\'s radiant\n')
@@ -4317,33 +5094,40 @@ if shower_isolate:
     sporadic_lats = []
     sporadic_vels = []
 
-    for file in shower_folder:
+    for sol_lon in shower_folder:
+
+        sub_shower_folder_name = f'{shower_folder_name}/{sol_lon}' 
+        sub_shower_folder = os.listdir(os.path.join(sub_shower_folder_name))
+
+        # goes over each folder containing solar longitude data from different years
+        for file in sub_shower_folder:
         # print(file)
 
-        if file[0:4] == 'FULL':
-            continue
+            if file[0:4] == 'FULL':
+                continue
 
-        # print(active_slons)
-        print(len(unique_days)) 
+            # print(active_slons)
+            print(len(unique_days)) 
 
-        meteor_count, file_lons, file_lats, file_vels = final_data(shower_folder_name, file, unique_days, active_slons, mode='shower')
+            meteor_count, file_lons, file_lats, file_vels = final_data(sub_shower_folder_name, file, unique_days, active_slons, mode='shower')
 
-        print(meteor_count) # this is the correct meteor count in comparison to the results from the 7 meteors in this script
+            print(meteor_count) # this is the correct meteor count in comparison to the results from the 7 meteors in this script
 
-        # keeping track of how many meteors this function removes, should be the same as the length of the final days list
-        removed_count += meteor_count
+            # keeping track of how many meteors this function removes, should be the same as the length of the final days list
+            removed_count += meteor_count
 
-        scaled_file_lons = scale(file_lons)
+            scaled_file_lons = scale(file_lons)
 
-        sporadic_lons.extend(scaled_file_lons)
-        sporadic_lats.extend(file_lats)
-        sporadic_vels.extend(file_vels)
-    
+            sporadic_lons.extend(scaled_file_lons)
+            sporadic_lats.extend(file_lats)
+            sporadic_vels.extend(file_vels)
+
     print('Number of date/time corresponding to shower meteors: ', len(unique_days))
     print('Number of lines skipped: ', removed_count)
-    print('Number of meteors before shower removal: ', num_echo_locs)
+    # print('Number of meteors before shower removal: ', num_echo_locs)
     # these lines should give the same number
-    
+
     echo_plot(sporadic_lons, sporadic_lats, sporadic_vels, year, method, mode='no shower', map_mode=map_mode)
-    
+
+
 

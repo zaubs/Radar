@@ -15,9 +15,17 @@ from cel2hel2cel import * # celestial to heliocentric script from MCB
 
 # list of important solar longitudes per strong shower from MCB with 5 day buffer both before and after the active shower days - Using this
 shower_slon = {
+                "all"  : {'ARI' : np.arange(69, 89), 'DSX': np.arange(184, 193), 'ETA' : np.arange(34, 60),
+                        'GEM' : np.arange(245, 269), 'ORI' : np.arange(202, 223), 'PER' : np.arange(134, 145),
+                        'QUA' : np.arange(281, 285), 'SDA' : np.arange(117, 142)},
+                  
+                "2024" : {'ARI' : np.arange(69, 89), 'DSX': np.arange(184, 193), 'ETA' : np.arange(34, 60),
+                        'GEM' : np.arange(245, 269), 'ORI' : np.arange(202, 223), 'PER' : np.arange(134, 145),
+                        'QUA' : np.arange(281, 285), 'SDA' : np.arange(117, 142)},
+                  
                 "2025" : {'ARI' : np.arange(69, 89), 'DSX': np.arange(182, 192), 'ETA' : np.arange(34, 62),
                         'GEM' : np.arange(253, 266), 'ORI' : np.arange(200, 218), 'PER' : np.arange(133, 143),
-                        'QUA' : np.arange(281, 285), 'SDA' : np.arange(117, 138), 'STA' : np.arange(184, 203)}
+                        'QUA' : np.arange(281, 285), 'SDA' : np.arange(117, 138)}
                         
                 }
 # It might be worth including some other showers in here to see if there are any stronger ones in the distribution not mentioned before
@@ -101,7 +109,7 @@ shower_boundaries = {
 
                 "2025" : {'ARI' : [[6, 6], [5, 5], [10, 10]], 'DSX' : [[20, 10], [5, 10], [10, 10]], 'ETA' : [[10, 10], [8, 6], [10, 10]],
                         'GEM' : [[5, 5], [5, 5], [10, 10]], 'ORI' : [[6, 6], [5, 5], [10, 10]], 'PER' : [[10, 10], [8, 8], [10, 10]],
-                        'QUA' : [[12, 12], [8, 8], [10, 10]], 'SDA' : [[6, 5], [5, 5], [10, 10]], 'STA' : [[8, 6], [6, 6], [10, 10]]}
+                        'QUA' : [[12, 12], [8, 8], [10, 10]], 'SDA' : [[6, 5], [5, 5], [10, 10]]}
                 }
 
 # Some notes below
