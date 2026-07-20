@@ -203,6 +203,9 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
 
                 # inclination
                 i = params[33]
+
+                # perihelion
+                q = params[46]
                 
                 # turning radiant into heliocentric coordinates - I want to use this to get locations of the showers in ecl lon/lat
                 v_cel      = getvec(float(alpha_g), float(delta_g))
@@ -283,7 +286,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
                     # want scaled longitudes for plotting
                     parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo,
                                           "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                          "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
+                                          "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Perihelion" : q, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
                 
                 else:
                     # CASE: All four filters + Duplicate check applied
@@ -295,7 +298,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
                                                     "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff, "Interferometry Error": int_error, "Solid Angle Error": solid_angle_error, 
                                                     "Station Measurement Error": sdel, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
+                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Perihelion" : q, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
 
                     # # CASE: velocity check only
                     elif method == 'vel': # for 2025, 652,372 events are returned from AND condition below
@@ -306,7 +309,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff,
                                                 "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, 
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
+                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Perihelion" : q, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
                         
                     # CASE: Interferometry check only
                     elif method == 'int':
@@ -316,7 +319,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Interferometry Error": int_error,
                                                 "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                 "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}                
+                                                "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Perihelion" : q, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}                
                     
                     # CASE: Radiant Location Check only
                     elif method == 'angle':
@@ -326,7 +329,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Solid Angle Error": solid_angle_error,
                                                 "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}                
+                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Perihelion" : q, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}                
                     
                     #  CASE: Station Measurement Check only
                     elif method == 'station':
@@ -336,7 +339,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Station Measurement Error": sdel,
                                                 "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon,
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
+                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Perihelion" : q, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
                     
 
                     # CASE: velocity and interferometry check only
@@ -347,7 +350,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff,
                                                 "Interferometry Error": int_error, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, 
                                                     "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
+                                                    "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Perihelion" : q, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
                         
                     # CASE: velocity, interferometry and solid angle check only
                     elif method == 'vel and int and angle' or method.upper() == 'VIA':
@@ -357,7 +360,7 @@ def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False,
                             parent_dict[date+time] = {"date": date, "time": time, "Number of Stations" : num_stations, "R0" : R0, "Theta" : theta, "Phi" : phi, "Time of flight velocity": vel_TimeofFlight, "Pre-t0 velocity": vel_PTN0, "Geocentric velocity" : vel_geo, "Percent difference": percent_diff,
                                                     "Interferometry Error": int_error, "Solid Angle Error": solid_angle_error, "Ecliptic longitude": corrected_lon, "Ecliptic latitude": ecl_lat, "Solar longitude": slon, 
                                                         "Geocentric Right Ascension" : alpha_g, "Geocentric Declination" : delta_g, "Geocentric Radiant Uncertainty" : del_rad_g, 'Uncertainty in Pre-t0 velocity' : del_vel_PTN0,
-                                                        "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
+                                                        "Semi Major Axis" : a, "Eccentricity" : e, "Inclination" : i, "Perihelion" : q, "Cel2Hel Longitude" : l_comp, "Cel2Hel Latitude" : b_comp}
 
         clean_data = len(parent_dict)
 
@@ -1214,11 +1217,11 @@ def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, 
         if method == 'raw' or method == 'r':
             clean_data.write(f'This file {filename} has {num_locs_init} detected events. No filtering methods were applied to reject events, this is the raw data that was seen.\n')
             
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8}\n")
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8}\n")
             
             for key, value in parent.items():
                 clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10}")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8}\n')
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:>8} {value['Perihelion']:>8}\n')
 
 
         if method == 'vel' or method == 'v':
@@ -1227,11 +1230,11 @@ def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, 
             clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
             clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
             
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'Percent difference':>10}\n\n")
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10}\n\n")
             
             for key, value in parent.items():
                 clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Percent difference']:>10.2f}\n')
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:>8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f}\n')
        
 
         elif method == 'int' or method == 'i':
@@ -1240,11 +1243,11 @@ def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, 
             clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
             clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
 
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'Int Error':>10}\n\n")
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Int Error':>10}\n\n")
             
             for key, value in parent.items():
                 clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Interferometry Error']:>10}\n')
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Interferometry Error']:>10}\n')
 
 
         elif method == 'angle' or method == 'a':
@@ -1253,11 +1256,11 @@ def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, 
             clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
             clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
             
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'Radiant Error':>10}\n\n")
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Radiant Error':>10}\n\n")
             
             for key, value in parent.items():
                 clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Solid Angle Error']:>10}\n')
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Solid Angle Error']:>10}\n')
 
 
         elif method == 'station' or method == 's':
@@ -1266,11 +1269,11 @@ def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, 
             clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
             clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
             
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'Station Error':>10}\n\n")
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Station Error':>10}\n\n")
             
             for key, value in parent.items():
                 clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Station Measurement Error']:>10}\n')
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Station Measurement Error']:>10}\n')
 
 
         elif method == 'vel and int' or method.upper() == 'VI':
@@ -1279,11 +1282,11 @@ def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, 
             clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
             clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
             
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'Percent difference':>10} {'Int Error':>10}\n\n")
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10}\n\n")
             
             for key, value in parent.items():
                 clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Percent difference']:>10.2f} {value['Interferometry Error']:>10} \n')
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']:>10} \n')
 
 
         elif method == 'vel and int and angle' or method.upper() == 'VIA':
@@ -1292,11 +1295,11 @@ def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, 
             clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
             clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
             
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'Percent difference':>10} {'Int Error':>10} {'Radiant Error':>10}\n\n")
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10} {'Radiant Error':>10}\n\n")
             
             for key, value in parent.items():
                 clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Percent difference']:>10.2f} {value['Interferometry Error']} {value['Solid Angle Error']:>10}\n')
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']} {value['Solid Angle Error']:>10}\n')
 
 
         elif method == 'all':
@@ -1305,11 +1308,11 @@ def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, 
             clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
             clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
 
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'Percent difference':>10} {'Int Error':>10} {'Radiant Error':>10} {'Station Error':>10}\n\n")
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10} {'Radiant Error':>10} {'Station Error':>10}\n\n")
 
             for key, value in parent.items():
                 clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10}")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Percent difference']:>10.2f} {value['Interferometry Error']:>10} {value['Solid Angle Error']:>10} {value['Station Measurement Error']:>10}\n')
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']:>10} {value['Solid Angle Error']:>10} {value['Station Measurement Error']:>10}\n')
 
     # could also write to a new txt file the total year data; total events seen no removed 
 
@@ -1341,6 +1344,7 @@ def grab_coords(parent):
     semi_majors = []
     eccentricities = []
     inclinations = []
+    perihelions = []
 
     c2h_lmda = []
     c2h_beta = []
@@ -1374,9 +1378,10 @@ def grab_coords(parent):
 
         vel_g = v['Geocentric velocity']
 
-        a = v['Semi Major Axis']
-        e = v['Eccentricity']
-        i = v['Inclination']
+        a = float(v['Semi Major Axis'])
+        e = float(v['Eccentricity'])
+        i = float(v['Inclination'])
+        q = float(v['Perihelion'])
 
         # checking for a defined ptn0 calculation
         if vel_ptn0[0] == '.' or del_vel_ptn0[0] == '.':
@@ -1391,12 +1396,14 @@ def grab_coords(parent):
                 continue # skip rows with missing speed data; does not seem to change anything, as any file without these coordinates already lacks pre-to velocity
         
         # curently not skipping meteors that have undefined values for a,e or i. only plotting the ones with defined values
-        if 0.0 < float(a) < 10.0:
-            semi_majors.append(float(a))
-        if float(e) != 0.0: 
-            eccentricities.append(float(e))
-        if float(i) != 0.0:
-            inclinations.append(float(i))
+        if 0.0 < a < 10.0:
+            semi_majors.append(a)
+        if e != 0.0: 
+            eccentricities.append(e)
+        if i != 0.0:
+            inclinations.append(i)
+        if q >= 0.0:
+            perihelions.append(q)
 
         # counting the meteors we can make distributions with
         loc_count += 1
@@ -1421,6 +1428,7 @@ def grab_coords(parent):
     orbital_params.append(semi_majors)
     orbital_params.append(eccentricities)
     orbital_params.append(inclinations)
+    orbital_params.append(perihelions)
 
     # print(times)
     return latitudes, longitudes, ptn0_vels, del_ptn0_vels, geo_vels, keys_to_delete, loc_count, times, dists, angles, orbital_params, c2h_lmda, c2h_beta # also returning the number of files with defined coordinates for more precise tracking purposes
@@ -1804,7 +1812,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
     # print('Root Mean Square Velocity', rms)
     # print('Standard Deviation:', std)
 
-    axes, eccens, incls = orbitals
+    axes, eccens, incls, peris = orbitals
     
     if mode == 'year':
 
@@ -1922,19 +1930,34 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.savefig(f'{plot_path}/{year}_inclincations.png')
         plt.show()
 
-        mean_a, mean_e, mean_i = round(np.mean(axes),4), round(np.mean(eccens),4), round(np.mean(incls),4)
-        std_a, std_e, std_i = round(np.std(axes),4), round(np.std(eccens),4), round(np.mean(incls),4)
+        # Perihelion plotting
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(peris, bins=200)
+
+        plt.xlabel('Perihelions (AU)')
+        plt.ylabel('Number of Events')
+        plt.title(f'Perihelion distances of clean meteor orbits - measurements from {year}', fontsize=14)
+
+        plt.grid(alpha=0.3)
+        # plt.legend()
+        plt.savefig(f'{plot_path}/{year}_perihelions.png')
+        plt.show()
+
+        mean_a, mean_e, mean_i, mean_q = np.mean(axes), np.mean(eccens), np.mean(incls), np.mean(peris)
+        std_a, std_e, std_i, std_q = np.std(axes), np.std(eccens), np.std(incls), np.std(peris)
 
         min_a, max_a = min(axes), max(axes)
         min_e, max_e = min(eccens), max(eccens)
         min_i, max_i = min(incls), max(incls)
+        min_q, max_q = min(peris), max(peris)
 
         with open(data_file, 'a') as vel_data:
             
-            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a}\t Eccentricity: {mean_e}\t Inclination: {mean_i}\n')
-            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i}\n')
-            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}]')
-     
+            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a} \t Eccentricity: {mean_e} \t Inclination: {mean_i} \t Perihelion: {mean_q} \n')
+            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i} \t Perihelion: {std_q} \n')
+            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}] \t Perihelion: [{min_q}, {max_q}]')
+
     elif mode == 'month':
 
         plot_path = f'{home}/clean file data/{year} clean events by month/velocity histograms'
@@ -2029,19 +2052,34 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.savefig(f'{plot_path}/{year}_inclincations.png')
         plt.show()
 
-        mean_a, mean_e, mean_i = np.mean(axes), np.mean(eccens), np.mean(incls)
-        std_a, std_e, std_i = np.std(axes), np.std(eccens), np.mean(incls)
+
+        # Perihelion plotting
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(peris, bins=200)
+
+        plt.xlabel('Perihelions (AU)')
+        plt.ylabel('Number of Events')
+        plt.title(f'Perihelion distances of clean meteor orbits - measurements from {year}', fontsize=14)
+
+        plt.grid(alpha=0.3)
+        # plt.legend()
+        plt.savefig(f'{plot_path}/{year}_perihelions.png')
+        plt.show()
+
+        mean_a, mean_e, mean_i, mean_q = np.mean(axes), np.mean(eccens), np.mean(incls), np.mean(peris)
+        std_a, std_e, std_i, std_q = np.std(axes), np.std(eccens), np.std(incls), np.std(peris)
 
         min_a, max_a = min(axes), max(axes)
         min_e, max_e = min(eccens), max(eccens)
         min_i, max_i = min(incls), max(incls)
+        min_q, max_q = min(peris), max(peris)
 
         with open(data_file, 'a') as vel_data:
             
-            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a}\t Eccentricity: {mean_e}\t Inclination: {mean_i}\n')
-            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i}\n')
-            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}]')
-     
+            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a} \t Eccentricity: {mean_e} \t Inclination: {mean_i} \t Perihelion: {mean_q} \n')
+            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i} \t Perihelion: {std_q} \n')
+            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}] \t Perihelion: [{min_q}, {max_q}]')
 
     elif mode == 'shower':
 
@@ -2143,18 +2181,33 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.savefig(f'{plot_path}/{year}{shower}_inclincations.png')
         plt.show()
 
-        mean_a, mean_e, mean_i = np.mean(axes), np.mean(eccens), np.mean(incls)
-        std_a, std_e, std_i = np.std(axes), np.std(eccens), np.mean(incls)
+        # Perihelion plotting
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(peris, bins=200)
+
+        plt.xlabel('Perihelions (AU)')
+        plt.ylabel('Number of Events')
+        plt.title(f'Perihelion distances of clean meteor orbits - measurements from {year}', fontsize=14)
+
+        plt.grid(alpha=0.3)
+        # plt.legend()
+        plt.savefig(f'{plot_path}/{year}_perihelions.png')
+        plt.show()
+
+        mean_a, mean_e, mean_i, mean_q = np.mean(axes), np.mean(eccens), np.mean(incls), np.mean(peris)
+        std_a, std_e, std_i, std_q = np.std(axes), np.std(eccens), np.std(incls), np.std(peris)
 
         min_a, max_a = min(axes), max(axes)
         min_e, max_e = min(eccens), max(eccens)
         min_i, max_i = min(incls), max(incls)
+        min_q, max_q = min(peris), max(peris)
 
         with open(data_file, 'a') as vel_data:
             
-            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a}\t Eccentricity: {mean_e}\t Inclination: {mean_i}\n')
-            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i}\n')
-            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}]')
+            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a} \t Eccentricity: {mean_e} \t Inclination: {mean_i} \t Perihelion: {mean_q} \n')
+            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i} \t Perihelion: {std_q} \n')
+            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}] \t Perihelion: [{min_q}, {max_q}]')
      
 
     elif mode == 'source':
@@ -2258,18 +2311,34 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.savefig(f'{plot_path}/{year}_inclincations.png')
         plt.show()
 
-        mean_a, mean_e, mean_i = np.mean(axes), np.mean(eccens), np.mean(incls)
-        std_a, std_e, std_i = np.std(axes), np.std(eccens), np.mean(incls)
+
+        # Perihelion plotting
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(peris, bins=200)
+
+        plt.xlabel('Perihelions (AU)')
+        plt.ylabel('Number of Events')
+        plt.title(f'Perihelion distances of clean meteor orbits - measurements from {year}', fontsize=14)
+
+        plt.grid(alpha=0.3)
+        # plt.legend()
+        plt.savefig(f'{plot_path}/{year}_perihelions.png')
+        plt.show()
+
+        mean_a, mean_e, mean_i, mean_q = np.mean(axes), np.mean(eccens), np.mean(incls), np.mean(peris)
+        std_a, std_e, std_i, std_q = np.std(axes), np.std(eccens), np.std(incls), np.std(peris)
 
         min_a, max_a = min(axes), max(axes)
         min_e, max_e = min(eccens), max(eccens)
         min_i, max_i = min(incls), max(incls)
+        min_q, max_q = min(peris), max(peris)
 
         with open(data_file, 'a') as vel_data:
             
-            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a}\t Eccentricity: {mean_e}\t Inclination: {mean_i}\n')
-            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i}\n')
-            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}]')
+            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a} \t Eccentricity: {mean_e} \t Inclination: {mean_i} \t Perihelion: {mean_q} \n')
+            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i} \t Perihelion: {std_q} \n')
+            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}] \t Perihelion: [{min_q}, {max_q}]')
 
 
 # Essentially another Parse function that organizes clean echo data by month for a given year; requires clean echo data to exist first
@@ -2470,6 +2539,7 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
     shower_axes = []
     shower_eccens = []
     shower_incls = []
+    shower_peris = []
     
 
     day_gap = file_slon - slon_peak # negative difference for days before, positive difference for days after
@@ -2527,13 +2597,14 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
                     a = params[15]
                     e = params[16]
                     i = params[17]
+                    q = params[18]
 
 
                     lmda, beta = float(lmda), float(beta)
                     alpha, delta = float(alpha), float(delta)
                     velg = float(velg)
 
-                    a, e, i = float(a), float(e), float(i)
+                    a, e, i, q = float(a), float(e), float(i), float(q)
 
                     # unpacking the radiant of the shower everytime the loop is ran so the shower starts with the same coordinates each time
                     # solar_longitudes = slons[name] revisit if I want to access all solar longitudes in this function at some point
@@ -2578,6 +2649,7 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
 
                     shower_eccens.append(e)
                     shower_incls.append(i)
+                    shower_peris.append(q)
 
                     active_file.write(f'{line}\n') # copies the file to a new directory of shower meteors
 
@@ -2589,6 +2661,7 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
         shower_orbitals.append(shower_axes)
         shower_orbitals.append(shower_eccens)
         shower_orbitals.append(shower_incls)
+        shower_orbitals.append(shower_peris)
     
         return shower_lons, shower_lats, shower_vels, shower_orbitals, corrected_coordinates, meteor_count, date_time
 
@@ -2639,6 +2712,7 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
                     a = params[15]
                     e = params[16]
                     i = params[17]
+                    q = params[18]
 
                     # unpacking the radiant of the shower
                     # solar_longitudes = slons[name]
@@ -2649,7 +2723,7 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
                     alpha, delta = float(alpha), float(delta)
                     velg = float(velg)
 
-                    a, e, i = float(a), float(e), float(i)
+                    a, e, i, q = float(a), float(e), float(i), float(q)
 
                     # unpacking the radiant of the shower everytime the loop is ran so the shower starts with the same coordinates each time
                     # solar_longitudes = slons[name] revisit if I want to access all solar longitudes in this function at some point
@@ -2695,6 +2769,7 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
 
                     shower_eccens.append(e)
                     shower_incls.append(i)
+                    shower_peris.append(q)
 
                     outer_file.write(f'{line}\n') # copies the file to a new directory of shower meteors
 
@@ -2708,6 +2783,7 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
         shower_orbitals.append(shower_axes)
         shower_orbitals.append(shower_eccens)
         shower_orbitals.append(shower_incls)
+        shower_orbitals.append(shower_peris)
 
         return shower_lons, shower_lats, shower_vels, shower_orbitals, corrected_coordinates, meteor_count, date_time
 
@@ -3160,8 +3236,45 @@ def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, shower_helio
     #         new_vels.append(v)
     #         new_days.append(d)
 
+    # write to a file here the meteors that pass as part of the shower
+    # format is 'date time'
         
     return new_lmda, new_beta, new_vels, new_days
+
+def date_writer(shower_dates):
+    '''
+    This function takes a list of unique date and times of observation corresponding to a shower meteor
+    The shower meteors determined are done so using all functions leading up to coord_sigma
+    '''
+
+    yearly_datetime_dict = {}
+
+    for datetime in shower_dates:
+
+        year = datetime[0:4]
+
+        if year not in yearly_datetime_dict:
+            yearly_datetime_dict[year] = []
+
+        yearly_datetime_dict[year].append(datetime)
+    
+
+    for y, d in yearly_datetime_dict.items():
+        
+        # folder storing shower meteor data
+        year_path = os.path.join('/home/zaubs/Desktop/radar/clean shower data', f'shower meteor dates')
+
+        os.makedirs(year_path, exist_ok=True)
+
+        # file for corresponding years of data
+        file_path = os.path.join(year_path, f'{y}_shower_dates.txt')
+
+        with open(file_path, 'w') as shower_data:
+            
+            shower_data.write(f'The year {y} contained {len(yearly_datetime_dict[y])} meteors part of a strong shower source. These meteors are to be removed from CMOR sporadic data.\n\n')
+            for meteor in d:
+                
+                shower_data.write(f'{meteor} \n')
 
 
 def final_data(folder, file, shower_dates, shower_slons, mode='year'):
@@ -3174,7 +3287,10 @@ def final_data(folder, file, shower_dates, shower_slons, mode='year'):
 
     path = os.path.join(home, folder, file)
 
+
+    year = file[6:10]
     file_slon = file[11:14]
+    print(year, file_slon)
 
     if file_slon[0:2] == '00':
         meteor_slon = int(file_slon[2]) # taking the leading zero out from solar longitude
@@ -3371,7 +3487,7 @@ plot_vels = []
 plot_orbitals = []
 
 # used for yearly plots of semi major axis, eccentricity and inclination
-plot_axes, plot_eccens, plot_incls = [], [], []
+plot_axes, plot_eccens, plot_incls, plot_peris = [], [], [], []
 
 vel_ptns = []
 d_vel_ptns = []
@@ -3539,11 +3655,12 @@ if raw_or_clean == '2':
                     # v_hel      = cel2hel(v_cel, sl)
                     # l_comp, b_comp = getangle(v_hel)
 
-                    axes, eccens, incls = orbitals
+                    axes, eccens, incls, peris = orbitals
 
                     plot_axes.extend(axes)
                     plot_eccens.extend(eccens)
                     plot_incls.extend(incls)
+                    plot_peris.extend(peris)
 
                     c2h_lons.extend(c2h_lon)
                     c2h_lats.extend(c2h_lat)
@@ -3625,11 +3742,12 @@ if raw_or_clean == '2':
                 # v_hel      = cel2hel(v_cel, sl)
                 # l_comp, b_comp = getangle(v_hel)
 
-                axes, eccens, incls = orbitals
+                axes, eccens, incls, peris = orbitals
 
                 plot_axes.extend(axes)
                 plot_eccens.extend(eccens)
                 plot_incls.extend(incls)
+                plot_peris.extend(peris)
 
                 c2h_lons.extend(c2h_lon)
                 c2h_lats.extend(c2h_lat)
@@ -3668,6 +3786,7 @@ if raw_or_clean == '2':
     plot_orbitals.append(plot_axes)
     plot_orbitals.append(plot_eccens)
     plot_orbitals.append(plot_incls)
+    plot_orbitals.append(plot_peris)
 
     # Full Year Data: Printed to the terminal and saved to the same directory as the clean echo data
     message1 = f'\n\nFULL YEAR DATA:\n\n'
@@ -3814,6 +3933,7 @@ if raw_or_clean == '2':
             active_axes = []
             active_eccens = []
             active_incls = []
+            active_peris = []
 
             active_dict = {} # want to store the above three values, keyed by filename
 
@@ -3827,6 +3947,7 @@ if raw_or_clean == '2':
             outer_axes = []
             outer_eccens = []
             outer_incls = []
+            outer_peris = []
 
             # includes files of slon 5 days before and after the shower is active
             full_days = []
@@ -3837,6 +3958,7 @@ if raw_or_clean == '2':
             full_axes = []
             full_eccens = []
             full_incls = []
+            full_peris = []
 
             # main dictionary keyed by solar longitude, nested dictionaries keyed by date+time with values of RA/Dec
             corr_radiants = {}
@@ -3909,6 +4031,7 @@ if raw_or_clean == '2':
                         shower_axes = np.asarray(shower_orbs[0])
                         shower_eccens = np.asarray(shower_orbs[1])
                         shower_incls = np.asarray(shower_orbs[2])
+                        shower_peris = np.asarray(shower_orbs[3])
 
                         shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
                                             (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
@@ -3939,6 +4062,7 @@ if raw_or_clean == '2':
                         active_axes.extend(shower_axes)
                         active_eccens.extend(shower_eccens)
                         active_incls.extend(shower_incls)
+                        active_peris.extend(shower_peris)
 
                         # corr_radiants[corr_shower_radiants] = corr_shower_radiants[file_slon]
                         # corr_radiants.extend(corr_shower_radiants.items())
@@ -3974,6 +4098,7 @@ if raw_or_clean == '2':
                         shower_axes = np.asarray(shower_orbs[0])
                         shower_eccens = np.asarray(shower_orbs[1])
                         shower_incls = np.asarray(shower_orbs[2])
+                        shower_peris = np.asarray(shower_orbs[3])
 
                         shower_mask = ((shower_lmda >= lon_bounds[0]) & (shower_lmda <= lon_bounds[1]) &
                                             (shower_beta >= lat_bounds[0]) & (shower_beta <= lat_bounds[1])
@@ -3998,6 +4123,7 @@ if raw_or_clean == '2':
                         outer_axes.extend(shower_axes)
                         outer_eccens.extend(shower_eccens)
                         outer_incls.extend(shower_incls)
+                        outer_peris.extend(shower_peris)
 
                         corr_radiants[file_slon] = corr_background_radiants
 
@@ -4019,6 +4145,7 @@ if raw_or_clean == '2':
                     full_axes.extend(shower_axes)
                     full_eccens.extend(shower_eccens)
                     full_incls.extend(shower_incls)
+                    full_peris.extend(shower_peris)
 
                     total_shower_meteors += num_active_meteors + num_outer_meteors
                     
@@ -4046,14 +4173,17 @@ if raw_or_clean == '2':
             active_orbitals.append(active_axes)
             active_orbitals.append(active_eccens)
             active_orbitals.append(active_incls)
+            active_orbitals.append(active_peris)
 
             outer_orbitals.append(outer_axes)
             outer_orbitals.append(outer_eccens)
             outer_incls.append(outer_incls)
+            outer_peris.append(outer_peris)
 
             full_orbitals.append(full_axes)
             full_orbitals.append(full_eccens)
             full_orbitals.append(full_incls)
+            full_orbitals.append(full_peris)
 
             # new_lons, new_lats, new_vel = background_subtract(year, outer_lons, outer_lats, outer_vels, shower_name, method, slon_status='active')
 
@@ -4616,7 +4746,6 @@ elif raw_or_clean == '1':
                         vels_filtered = shower_vel[shower_mask]
                         days_filtered = shower_days[shower_mask]
                 
-                        
                         # collects coordinates of the shower files, along with velocities
                         # using these lists to calculate flux, which will be used for shower subtraction
                         # active_days.extend(shower_days)
@@ -5094,6 +5223,9 @@ elif raw_or_clean == '1':
     sporadic_lats = []
     sporadic_vels = []
 
+    # this function will be writing dates to a folder that will be used for plotting external to this script
+    date_writer(unique_days)
+
     for sol_lon in shower_folder:
 
         sub_shower_folder_name = f'{shower_folder_name}/{sol_lon}' 
@@ -5107,11 +5239,12 @@ elif raw_or_clean == '1':
                 continue
 
             # print(active_slons)
-            print(len(unique_days)) 
-
+            print(len(unique_days))
+            
             meteor_count, file_lons, file_lats, file_vels = final_data(sub_shower_folder_name, file, unique_days, active_slons, mode='shower')
 
             print(meteor_count) # this is the correct meteor count in comparison to the results from the 7 meteors in this script
+            print(removed_count) 
 
             # keeping track of how many meteors this function removes, should be the same as the length of the final days list
             removed_count += meteor_count
