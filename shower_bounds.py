@@ -15,10 +15,10 @@ from cel2hel2cel import * # celestial to heliocentric script from MCB
 
 # list of important solar longitudes per strong shower from MCB with 5 day buffer both before and after the active shower days - Using this
 shower_slon = {
-                "all"  : {'ARI' : np.arange(69, 89), 'DSX': np.arange(184, 193), 'ETA' : np.arange(34, 60),
-                        'GEM' : np.arange(245, 269), 'ORI' : np.arange(202, 223), 'PER' : np.arange(134, 145),
-                        'QUA' : np.arange(281, 285), 'SDA' : np.arange(117, 142)},
-                  
+                "all"  : {'ARI' : np.arange(65, 89), 'DSX': np.arange(178, 195), 'ETA' : np.arange(30, 68),
+                        'GEM' : np.arange(245, 272), 'ORI' : np.arange(196, 225), 'PER' : np.arange(131, 146),
+                        'QUA' : np.arange(281, 285), 'SDA' : np.arange(115, 145)},
+                
                 "2024" : {'ARI' : np.arange(69, 89), 'DSX': np.arange(184, 193), 'ETA' : np.arange(34, 60),
                         'GEM' : np.arange(245, 269), 'ORI' : np.arange(202, 223), 'PER' : np.arange(134, 145),
                         'QUA' : np.arange(281, 285), 'SDA' : np.arange(117, 142)},
@@ -32,11 +32,16 @@ shower_slon = {
 
 # list of shower peak solar longitudes from MCB
 shower_slon_peaks = {'ARI' : 81, 'DSX': 186, 'ETA' : 45,
-            'GEM' : 261, 'ORI' : 208, 'QUA' : 283, 'SDA' : 126}
+            'GEM' : 261, 'ORI' : 208, 'PER' : 140, 'QUA' : 283, 'SDA' : 126}
 
 # ordered lists of geocentric right ascension (alpha) and declination (delta) from Brown et al. (2010) and MCB (same numbers) - Using this
 shower_rads = {'ARI' : [45.7, 25], 'DSX': [154.3, -1], 'ETA' : [337.9, -0.9],
             'GEM' : [112.5, 32.1], 'ORI' : [95.5, 15.2], 'QUA' : [231.5, 48.5], 'SDA' : [340.8, -16.3]}
+
+# list of drift values for each shower's celestial coordinates (per solar longitude)
+shower_rad_drifts = {'ARI' : [0.86, 0.18], 'DSX' : [-1.00, 0.56], 'ETA' : [0.70, 0.33], 'GEM' : [1.12, -0.17], 
+                     'ORI' : [0.78, 0.02], 'PER' : [1.39, 0.29], 'QUA' : [0.78, -0.38], 'SDA' : [0.78, 0.30]} # 'KEY' : [alpha drift value, delta drift value] both in degrees
+
 
 shower_mean_velocities = {'ARI' : 35, 'DSX' : 35, 'ETA' : 50,
                         'GEM' : 35, 'ORI' : 50, 
@@ -46,10 +51,20 @@ shower_mean_velocities = {'ARI' : 35, 'DSX' : 35, 'ETA' : 50,
 
 # radii of longitude and latitude that showers fit in; some shower's need larger enclosed regions (quadrandids might be one of them)
 
+# make the next set of bounds the accumulation of drift from the peak source plus 2-3 degrees for buffer
+# some code is in parse radar (voxel subtract) that might help out with this
 shower_boundaries = {
-                "all"  : {'ARI' : [[8, 8], [5, 7], [10, 10]], 'DSX' : [[10, 10], [10, 10], [10, 10]], 'ETA' : [[8, 5], [5, 7], [10, 10]],
-                        'GEM' : [[7, 7], [7, 7], [10, 10]], 'ORI' : [[8, 5], [5, 5], [10, 10]], 'PER' : [[10, 10], [8, 8], [10, 10]],
-                        'QUA' : [[18, 18], [8, 8], [10, 10]], 'SDA' : [[8, 6], [6, 6], [10, 10]]},
+                "all"  : {'ARI' : [[10, 10], [7, 7], [10, 10]], 'DSX' : [[10, 5], [6, 6], [10, 5]], 'ETA' : [[7, 7], [7, 7], [8, 12]],
+                        'GEM' : [[7, 7], [7, 7], [5, 5]], 'ORI' : [[6, 6], [6, 6], [10, 10]], 'PER' : [[5, 5], [5, 5], [7, 13]],
+                        'QUA' : [[10, 10], [5, 5], [5, 5]], 'SDA' : [[7, 7], [7, 7], [8, 8]]},
+                
+                "all"  : {'ARI' : [[10, 10], [7, 7], [10, 10]], 'DSX' : [[10, 5], [6, 6], [10, 5]], 'ETA' : [[7, 7], [7, 7], [8, 12]],
+                        'GEM' : [[7, 7], [7, 7], [5, 5]], 'ORI' : [[6, 6], [6, 6], [10, 10]], 'PER' : [[5, 5], [5, 5], [7, 13]],
+                        'QUA' : [[10, 10], [5, 5], [5, 5]], 'SDA' : [[7, 7], [7, 7], [8, 8]]},
+                   
+                "all_narrow"  : {'ARI' : [[8, 6], [4, 5], [10, 10]], 'DSX' : [[10, 5], [7, 6], [10, 5]], 'ETA' : [[5, 5], [4, 5], [8, 12]],
+                        'GEM' : [[6, 4], [3, 5], [5, 5]], 'ORI' : [[6, 3], [2, 4], [10, 10]], 'PER' : [[5, 5], [5, 5], [7, 13]],
+                        'QUA' : [[13, 10], [5, 3], [4, 6]], 'SDA' : [[5, 5], [5, 5], [8, 7]]},
                    
                 "2011" : {'ARI' : [[8, 8], [5, 7], [10, 10]], 'DSX' : [[10, 10], [10, 10], [10, 10]], 'ETA' : [[8, 5], [5, 7], [10, 10]],
                         'GEM' : [[7, 7], [7, 7], [10, 10]], 'ORI' : [[8, 5], [5, 5], [10, 10]], 'PER' : [[10, 10], [8, 8], [10, 10]],
