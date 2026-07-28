@@ -1136,14 +1136,20 @@ def duplicate(parent, times, dists, angles, dr_count, da_count):
         for i, key in enumerate(parent):
             # in range(0, len(times), 2): # each iteration goes through two events stored in the parent dictionary
             # print(key)
-            time1 = times[i].strip()
-            time2 = times[i+1].strip()
+                                
+            # nothing to compare againt at the very start or end of the dictionary
+            if i == 0 or i == len(parent) -1: # end of list, no comparison to be made
+                continue
 
-            dist1 = dists[i]
-            dist2 = dists[i+1]
+            # every other iteration rolls over the list's indices instead of doing pairs of times simultaneously - this should catch more duplicate events than before
+            time1 = times[i-1]
+            time2 = times[i]
 
-            theta1, phi1 = angles[i]
-            theta2, phi2 = angles[i+1]
+            dist1 = dists[i-1]
+            dist2 = dists[i]
+
+            theta1, phi1 = angles[i-1]
+            theta2, phi2 = angles[i]
 
             hour1 = time1[0:2]
             hour2 = time2[0:2]
@@ -1166,7 +1172,7 @@ def duplicate(parent, times, dists, angles, dr_count, da_count):
                     # We only delete the event if the two happen at similar times AND they're close together in the sky
                         # angle condition
                         if abs(float(theta1) - float(theta2)) <=5 and abs(float(phi1) - float(phi2)) <=5:
-                          
+                        
                             del parent_new[key]
                             # print('deleted (angle)')
                             da += 1
@@ -1185,6 +1191,7 @@ def duplicate(parent, times, dists, angles, dr_count, da_count):
     # should only happen at the end of the list, in which case I'll have to check the last event to see if it is a duplicate
     except IndexError:
         return parent_new, dr, da
+
 
     # angular position test (simlilar theta/phi)
 
