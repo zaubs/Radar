@@ -862,7 +862,7 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
     h = ax.hist2d(lmda, beta, bins=200, cmap='plasma') # should save files by bin size now for different runs
 
     binsize = len(h[0])
-    # print(binsize)   
+    # print(binsize, len(lmda), len(beta))   
 
     # use this to show which shower regions are being covered by the set dictionaries
     # currently all clusters seen in the 2025 data set are covered - will look through other years when back on linux desktop
@@ -959,11 +959,23 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 
             ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - {meteor_source} measurements during {sl} in {year_label}')
 
-            # new directory for daily plots
-            daily_path = f'{path}/each day'
-            os.makedirs(daily_path, exist_ok=True)
+            # new directory for ten day plots
+            if '-' in str(sl):
+                ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - {meteor_source} measurements during {sl} in {year_label}')
 
-            plt.savefig(f'{daily_path}/{year_label}_{sl}_{method}Filter_{meteor_source}_radiantColorDist{binsize}.png')
+                # new directory for daily plots
+                daily_path = f'{path}/every ten days'
+                os.makedirs(daily_path, exist_ok=True)
+
+                plt.savefig(f'{daily_path}/{year_label}_{sl}_{method}Filter_{meteor_source}_radiantColorDist{binsize}.png')
+
+            # new directory for daily plots
+            else:
+                
+                daily_path = f'{path}/each day'
+                os.makedirs(daily_path, exist_ok=True)
+
+                plt.savefig(f'{daily_path}/{year_label}_{sl}_{method}Filter_{meteor_source}_radiantColorDist{binsize}.png')
 
             plt.close()
             # don't have plt.show() here - the plots are not generated in chronological order of their sl
@@ -983,10 +995,13 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
     
     elif month != None and meteor_source != None:
 
-        if meteor_source == 'all':
+        if meteor_source == 'all' and year != '2011-2025':
             ax.set_title(f'All Clean Sporadic Meteor Sources observed in Ecliptic Coordinates - measurements from {month}/{year}')
         else:
-            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {month}/{year}')
+            if meteor_source == 'all':
+                ax.set_title(f'Clean Sporadic Meteor Sources observed in Ecliptic Coordinates - measurements from {month}/{year}')
+            else:
+                ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from the {meteor_source} in {month}/{year}')
         plt.savefig(f'{path}/{year}{month}_{method}Filter_{meteor_source}_radiantColorDist{binsize}.png')
 
         counts_file = os.path.join(counts_path, f"{method}-counts-{meteor_source}-{year}{month}-{binsize}-29.txt")
@@ -1054,6 +1069,36 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 # instead of creating a new density matrix with num_density, will try to subtract h[0]'s first -  as these are the counts and might be considered as number densities in a sense
 # If i return num_density to echo plot, will need to either work with it within that function, or return it again using echo plot
 
+
+def compute_heatmap_centroid(h):
+    '''
+    Compute a weighted centroid from a matplotlib hist2d output.
+    The histogram counts are used as weights for the bin centers.
+    '''
+    if h is None or len(h) < 3:
+        return np.nan, np.nan
+
+    counts = np.asarray(h[0], dtype=float)
+    if counts.size == 0:
+        return np.nan, np.nan
+
+    x_edges = h[1]
+    y_edges = h[2]
+
+    x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
+    y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
+
+    X, Y = np.meshgrid(x_centers, y_centers, indexing='ij')
+
+    mask = counts > 0
+    if not np.any(mask):
+        return np.nan, np.nan
+
+    weights = counts[mask]
+    lmda_center = np.sum(X[mask] * weights) / np.sum(weights)
+    beta_center = np.sum(Y[mask] * weights) / np.sum(weights)
+
+    return lmda_center, beta_center
 
 
 def vel_map(lmda, beta, vels, year, path, method, month=None, meteor_source=None):
@@ -1482,6 +1527,8 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
         month - plots the echo data for each month and saves those figures in appropriate folders with the corresponding monthly txt files
     '''
 
+    h = None
+
     if bounds is not None and not isinstance(bounds, dict):
         lon_bounds, lat_bounds = bounds[0], bounds[1] # each is a list of mmin, max values
     else:
@@ -1714,6 +1761,23 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
         # plt.savefig(f'{plot_path}/{year}_radiantDist.png')
         # plt.show()
 
+        elif mode == 'all months':
+
+            plot_path = f'{home}/clean source data/all months figures/{month} {source} clean figures' # new directory made
+            os.makedirs(plot_path, exist_ok=True)
+
+
+            if map_mode == 'density':
+                
+               
+                h = heat_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily)
+            
+            elif map_mode == 'velocity':
+
+                # vel_map(raw_lons, raw_lats, vels, year, plot_path)
+
+                vel_map(lmda, beta, vels, year, plot_path, method)
+        
 
         else:
             
@@ -1722,6 +1786,8 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
             scatter_map(lmda, beta, year, plot_path, method)
 
     # add a successive plot here; showing distribution after each successive filter applied
+
+    return h
 
 
 def echo_3d_plot(lmda, beta, vels, year, month=None, shower=None, source=None, mode='month', bounds=None):
@@ -2340,7 +2406,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.grid(alpha=0.3)
         plt.legend()
         plt.savefig(f'{plot_path}/{year}{source}_velocities.png')
-        plt.show()
+        plt.close()
 
         num_bins = len(n)
 
@@ -2369,10 +2435,11 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.ylabel('Number of Events')
         plt.title(f'Semi Major Axes of clean meteor orbits - measurements from {year}', fontsize=14)
 
+        plt.xlim(-10,10)
         plt.grid(alpha=0.3)
         # plt.legend()
         plt.savefig(f'{plot_path}/{year}_semimajoraxes.png')
-        plt.show()
+        plt.close()
 
 
         # Eccentricity plotting
@@ -2387,7 +2454,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.grid(alpha=0.3)
         # plt.legend()
         plt.savefig(f'{plot_path}/{year}_eccentricities.png')
-        plt.show()
+        plt.close()
 
 
         # Inclincation plotting
@@ -2402,7 +2469,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.grid(alpha=0.3)
         # plt.legend()
         plt.savefig(f'{plot_path}/{year}_inclincations.png')
-        plt.show()
+        plt.close()
 
 
         # Perihelion plotting
@@ -2417,6 +2484,117 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.grid(alpha=0.3)
         # plt.legend()
         plt.savefig(f'{plot_path}/{year}_perihelions.png')
+        plt.close()
+
+        mean_a, mean_e, mean_i, mean_q = np.mean(axes), np.mean(eccens), np.mean(incls), np.mean(peris)
+        std_a, std_e, std_i, std_q = np.std(axes), np.std(eccens), np.std(incls), np.std(peris)
+
+        min_a, max_a = min(axes), max(axes)
+        min_e, max_e = min(eccens), max(eccens)
+        min_i, max_i = min(incls), max(incls)
+        min_q, max_q = min(peris), max(peris)
+
+        with open(data_file, 'a') as vel_data:
+            
+            vel_data.write(f'\nAverages: \t\t Semi Major Axis: {mean_a} \t Eccentricity: {mean_e} \t Inclination: {mean_i} \t Perihelion: {mean_q} \n')
+            vel_data.write(f'Standard Deviations: \t\t Semi Major Axis: {std_a} \t Eccentricity: {std_e} \t Inclination: {std_i} \t Perihelion: {std_q} \n')
+            vel_data.write(f'Boundaries: \t\t Semi Major Axis: [{min_a}, {max_a}] \t Eccentricity: [{min_e}, {max_e}] \t Inclination: [{min_i}, {max_i}] \t Perihelion: [{min_q}, {max_q}]')
+
+    elif mode == 'all months':
+        plot_path = f'{home}/clean source data/all months figures/{month} {source} clean figures' # new directory made
+        os.makedirs(plot_path, exist_ok=True)
+
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(vels, bins=50)
+        bin_index = np.digitize(mean, bins) - 1
+        bin_index = np.clip(bin_index, 0, len(n) - 1)
+
+        plt.xlabel('Geocentric Velocities (km/s)')
+        plt.ylabel('Number of Events')
+        plt.title(f'Geocentric Velocities of clean meteor echoes - measurements from {month}/{year}', fontsize=14)
+
+        plt.grid(alpha=0.3)
+        plt.legend()
+        plt.savefig(f'{plot_path}/ALL{month}{source}_velocities.png')
+        plt.show()
+
+        num_bins = len(n)
+
+        # Writing the histogram data to a txt file
+        data_path = f'{home}/clean source data/all months events/{month} {source} clean events'
+        os.makedirs(data_path, exist_ok=True)
+
+        data_file = os.path.join(data_path, f"FULL-{month}{source}-{num_bins}-29.txt")
+
+        
+        with open(data_file, 'w') as vel_data:
+        
+            vel_data.write(f'\nMean Velocity: {mean} km/s\n') # should include uncertanties at some point too
+            vel_data.write(f'Median Velocity: {median} km/s\n')
+            vel_data.write(f'Root Mean Square Velocity: {rms} km/s\n')
+            vel_data.write(f'Standard Deviation: +/-{std} km/s\n')
+            vel_data.write(f'Distribution Peak (Mean Index): {n[bin_index]}\n')
+            vel_data.write(f'Distribution Width (mean +/- std): {2*std} km/s\n')
+
+         # Semi Major Axes plotting
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(axes, bins=200)
+
+        plt.xlabel('Semi Major Axes (AU)')
+        plt.ylabel('Number of Events')
+        plt.title(f'Semi Major Axes of clean meteor orbits - measurements from {month}/{year}', fontsize=14)
+
+        plt.xlim(-10,10)
+        plt.grid(alpha=0.3)
+        # plt.legend()
+        plt.savefig(f'{plot_path}/ALL{month}{source}_semimajoraxes.png')
+        plt.show()
+
+
+        # Eccentricity plotting
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(eccens, bins=200)
+
+        plt.xlabel('Eccentricities')
+        plt.ylabel('Number of Events')
+        plt.title(f'Eccentricities of clean meteor orbits - measurements from {month}/{year}', fontsize=14)
+
+        plt.grid(alpha=0.3)
+        # plt.legend()
+        plt.savefig(f'{plot_path}/ALL{month}{source}_eccentricities.png')
+        plt.show()
+
+
+        # Inclincation plotting
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(incls, bins=200)
+
+        plt.xlabel('Inclinations (deg)')
+        plt.ylabel('Number of Events')
+        plt.title(f'Inclincations of clean meteor orbits - measurements from {month}/{year}', fontsize=14)
+
+        plt.grid(alpha=0.3)
+        # plt.legend()
+        plt.savefig(f'{plot_path}/ALL{month}{source}_inclincations.png')
+        plt.show()
+
+
+        # Perihelion plotting
+        figure = plt.figure(figsize=(10,5))
+
+        n, bins, patches = plt.hist(peris, bins=200)
+
+        plt.xlabel('Perihelions (AU)')
+        plt.ylabel('Number of Events')
+        plt.title(f'Perihelion distances of clean meteor orbits - measurements from {month}/{year}', fontsize=14)
+
+        plt.grid(alpha=0.3)
+        # plt.legend()
+        plt.savefig(f'{plot_path}/ALL{month}{source}_perihelions.png')
         plt.show()
 
         mean_a, mean_e, mean_i, mean_q = np.mean(axes), np.mean(eccens), np.mean(incls), np.mean(peris)
@@ -5514,26 +5692,34 @@ if raw_or_clean == '3':
 
     source = input('Which sporadic source do you wish to work with? (Choose from H, AH, NA, SA, NT, ALL): ').upper()
     
-    view_mode = input('How would you like to view the sporadic sources? (1 for daily, 2 for monthly, 3 for yearly, 4 for total): ')
+    view_mode = input('How would you like to view the sporadic sources? (1 for daily, 2 for every 10 days, 3 for monthly, 4 for yearly, 5 for each month over 15 years, 6 for total radiant distribution): ')
 
     # specifying plotting branch directions based on user input
     all_days = False
+    ten_days = False
     monthly = False
     yearly = False
+    all_months = False
     all_data = False
 
     method = 'all'
 
     if view_mode == '1':
         all_days = True
-    
+
     elif view_mode == '2':
-        monthly = True
+        ten_days = True
     
     elif view_mode == '3':
-        yearly = True
+        monthly = True
     
     elif view_mode == '4':
+        yearly = True
+    
+    elif view_mode == '5':
+        all_months = True
+    
+    elif view_mode == '6':
         all_data = True
 
     # load all shower dates from the txt files into a set for fast lookup
@@ -5551,11 +5737,14 @@ if raw_or_clean == '3':
 
 
     daily_dict   = {}  # key: slon
+    ten_day_dict = {}  # key: slon(i)-slon(i+9)
     monthly_dict = {}  # key: month (1-12)
     yearly_dict  = {}  # key: year (2011-2025)
 
     yearly_daily_dict   = {}  # year -> slon -> data
+    yearly_ten_day_dict = {}  # year -> slon[i]:slon[i+9] -> data
     yearly_monthly_dict = {}  # year -> month -> data
+    all_months_dict = {}    # month -> data
 
     # lists to store parameters for all data
     longitudes = []
@@ -5686,15 +5875,22 @@ if raw_or_clean == '3':
                     longitudes.append(scaled_lmda)
                     latitudes.append(beta)
                     velocities.append(velg)
-
-                    axes.append(a)
+                    
+                    # some years have extremely large values of semi major axis
+                    if 0.0 <= a <=10:
+                        axes.append(a)
                     eccens.append(e)
                     incls.append(i)
                     peris.append(q)
 
+                    # compute the 10-day bin start (e.g. slon 45 -> bin 40, slon 23 -> bin 20)
+                    ten_day_bin = (meteor_slon // 10) * 10
+                    ten_day_key = f'{ten_day_bin}-{ten_day_bin + 9}'  # e.g. '40-49'
+
+                    # append to daily dict keyed by year -> SL
                     yearly_daily_dict.setdefault(year, {})
                     yearly_daily_dict[year].setdefault(meteor_slon, {'lons': [], 'lats': [], 'vels': [], 
-                                                  'axes' : [], 'eccens' : [], 'incls' : [], 'peris' : []})
+                                                  'axes' : [], 'eccens' : [], 'incls' : [], 'peris' : [], 'orbitals' : []})
                     yearly_daily_dict[year][meteor_slon]['lons'].append(scaled_lmda)
                     yearly_daily_dict[year][meteor_slon]['lats'].append(beta)
                     yearly_daily_dict[year][meteor_slon]['vels'].append(velg)
@@ -5703,10 +5899,25 @@ if raw_or_clean == '3':
                     yearly_daily_dict[year][meteor_slon]['incls'].append(i)
                     yearly_daily_dict[year][meteor_slon]['peris'].append(q)
 
+
+                    # append to the dict saving every ten days worth of data
+                    yearly_ten_day_dict.setdefault(year, {})
+                    yearly_ten_day_dict[year].setdefault(ten_day_key, {'lons': [], 'lats': [], 'vels': [],
+                                                                        'axes': [], 'eccens': [], 'incls': [], 'peris': [], 'orbitals' : []})
+                    yearly_ten_day_dict[year][ten_day_key]['lons'].append(scaled_lmda)
+                    yearly_ten_day_dict[year][ten_day_key]['lats'].append(beta)
+                    yearly_ten_day_dict[year][ten_day_key]['vels'].append(velg)
+                    yearly_ten_day_dict[year][ten_day_key]['axes'].append(a)
+                    yearly_ten_day_dict[year][ten_day_key]['eccens'].append(e)
+                    yearly_ten_day_dict[year][ten_day_key]['incls'].append(i)
+                    yearly_ten_day_dict[year][ten_day_key]['peris'].append(q)
+
+                    
+
                     # append to monthly dict keyed by year -> month
                     yearly_monthly_dict.setdefault(year, {})
                     yearly_monthly_dict[year].setdefault(month, {'lons': [], 'lats': [], 'vels': [], 
-                                                  'axes' : [], 'eccens' : [], 'incls' : [], 'peris' : []})
+                                                  'axes' : [], 'eccens' : [], 'incls' : [], 'peris' : [], 'orbitals' : []})
                     yearly_monthly_dict[year][month]['lons'].append(scaled_lmda)
                     yearly_monthly_dict[year][month]['lats'].append(beta)
                     yearly_monthly_dict[year][month]['vels'].append(velg)
@@ -5717,14 +5928,62 @@ if raw_or_clean == '3':
 
                     # append to yearly dict keyed by year
                     yearly_dict.setdefault(year, {'lons': [], 'lats': [], 'vels': [], 
-                                                  'axes' : [], 'eccens' : [], 'incls' : [], 'peris' : []})
+                                                  'axes' : [], 'eccens' : [], 'incls' : [], 'peris' : [], 'orbitals' : []})
                     yearly_dict[year]['lons'].append(scaled_lmda)
                     yearly_dict[year]['lats'].append(beta)
                     yearly_dict[year]['vels'].append(velg)
-                    yearly_dict[year]['axes'].append(a)
+
+                    if 0.0 < a < 10.0:
+                        yearly_dict[year]['axes'].append(a)
+
                     yearly_dict[year]['eccens'].append(e)
                     yearly_dict[year]['incls'].append(i)
                     yearly_dict[year]['peris'].append(q)
+
+                    # if str(month[0]) == '0':
+                    #     month = month[1] # reducing the month label to an integer
+
+                    all_months_dict.setdefault(month, {'lons': [], 'lats': [], 'vels': [], 
+                                                  'axes' : [], 'eccens' : [], 'incls' : [], 'peris' : [], 'orbitals' : []})
+                    all_months_dict[month]['lons'].append(scaled_lmda)
+                    all_months_dict[month]['lats'].append(beta)
+                    all_months_dict[month]['vels'].append(velg)
+
+                    if 0.0 < a < 10.0:
+                        all_months_dict[month]['axes'].append(a)
+
+                    all_months_dict[month]['eccens'].append(e)
+                    all_months_dict[month]['incls'].append(i)
+                    all_months_dict[month]['peris'].append(q)
+
+        # creating packed orbital lists here
+        # yearly_ten_day_dict[year][ten_day_key]['orbitals'].append(yearly_daily_dict[year][ten_day_key]['axes'])
+        # yearly_ten_day_dict[year][ten_day_key]['orbitals'].append(yearly_daily_dict[year][ten_day_key]['eccens'])
+        # yearly_ten_day_dict[year][ten_day_key]['orbitals'].append(yearly_daily_dict[year][ten_day_key]['incls'])
+        # yearly_ten_day_dict[year][ten_day_key]['orbitals'].append(yearly_daily_dict[year][ten_day_key]['peris'])
+        
+        # yearly_monthly_dict[year][month]['orbitals'].append(yearly_daily_dict[year][month]['axes'])
+        # yearly_monthly_dict[year][month]['orbitals'].append(yearly_daily_dict[year][month]['eccens'])
+        # yearly_monthly_dict[year][month]['orbitals'].append(yearly_daily_dict[year][month]['incls'])
+        # yearly_monthly_dict[year][month]['orbitals'].append(yearly_daily_dict[year][month]['peris'])
+        
+        
+        yearly_dict[year]['orbitals'].append(yearly_dict[year]['axes'])
+        yearly_dict[year]['orbitals'].append(yearly_dict[year]['eccens'])
+        yearly_dict[year]['orbitals'].append(yearly_dict[year]['incls'])
+        yearly_dict[year]['orbitals'].append(yearly_dict[year]['peris'])
+
+    for month in range(1, 13):
+
+        if month < 10:
+            month = '0'+str(month) # takes the loop index and changes it to the month key being used
+        else:
+            month = str(month)
+
+        all_months_dict[month]['orbitals'].append(all_months_dict[month]['axes'])
+        all_months_dict[month]['orbitals'].append(all_months_dict[month]['eccens'])
+        all_months_dict[month]['orbitals'].append(all_months_dict[month]['incls'])
+        all_months_dict[month]['orbitals'].append(all_months_dict[month]['peris'])
 
 
     print(f'Shower meteors excluded: {shower_count}')
@@ -5752,20 +6011,201 @@ if raw_or_clean == '3':
             plt.ylabel('Number of Meteors')
 
             plt.grid(alpha=0.3)
-            plt.show()
+            plt.close()
+    
+    elif ten_days:
+        
+        for yr, bins in sorted(yearly_ten_day_dict.items()):
+            # currently saving longitudes/latitudes for each year, however I eventually want to save plots using vel_histo here too
+            ten_day_folder_path = f'{home}/clean source data/{yr} {source} clean figures/every ten days/orbital parameters'
+            os.makedirs(ten_day_folder_path, exist_ok=True)
+        
+            
+            # creating a plot showing the change in centroid location for each year
+            slon_bins        = []
+            slon_bin_labels = []
+            central_lons     = []
+            central_lats     = []
+
+            for bin_key, data in sorted(bins.items(), key=lambda x: int(x[0].split('-')[0])):
+                h = echo_plot(data['lons'], data['lats'], data['vels'], yr, method, source=source, mode='source', daily=[True, bin_key])
+
+                lmda_center, beta_center = compute_heatmap_centroid(h)
+                if np.isfinite(lmda_center) and np.isfinite(beta_center):
+                    print(f"Year: {yr} \t SL: {bin_key} \t Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
+                else:
+                    print("Centroid: no populated bins found")
+                
+                slon_bins.append(bin_key) 
+                slon_bin_labels.append(int(bin_key.split('-')[0]))  # store 0, 10, 20... instead of '0-9', '10-19'...
+                central_lons.append(lmda_center)
+                central_lats.append(beta_center)
+
+            xticks = [0, 100, 200, 300]
+            
+            plt.figure(figsize=(10,5))
+
+            plt.plot(slon_bin_labels, central_lons, color='k')
+
+            plt.title(f'{source} Central Longitudes ' + r'$(\lambda - \lambda_{{\odot}})$ ' + f'- Measured in {yr}')
+            
+            plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+            plt.ylabel(f'Heliocentric Longitude (degrees)')
+
+            plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
+
+            plt.grid(True, alpha=0.3)
+            plt.savefig(f'{ten_day_folder_path}/{year}{source}_longitudes.png')
+            plt.close()
+
+            plt.figure(figsize=(10,5))
+
+            plt.plot(slon_bin_labels, central_lats, color='k')
+
+            plt.title(f'{source} Central Latitudes ' +  r'$(\beta)$ ' +  f'- Measured in {yr}')
+            
+            plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+            plt.ylabel(f'Heliocentric Latitude (degrees)')
+
+            plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
+
+            plt.grid(True, alpha=0.3)
+            plt.savefig(f'{ten_day_folder_path}/{year}{source}_latitudes.png')
+            plt.close()
 
     elif monthly:
         for yr, months in sorted(yearly_monthly_dict.items()):
             for month, data in sorted(months.items()):
-                echo_plot(data['lons'], data['lats'], data['vels'], yr, method, month=month, source=source, mode='source')
-    
+                h = echo_plot(data['lons'], data['lats'], data['vels'], yr, method, month=month, source=source, mode='source')
+
+                lmda_center, beta_center = compute_heatmap_centroid(h)
+                if np.isfinite(lmda_center) and np.isfinite(beta_center):
+                    print(f"Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
+                else:
+                    print("Centroid: no populated bins found")
+                # could overlay each year on top of each other similar to how MCB did in her papers from 2006/2008
+                    
     # make heat plots and scatter (number of meteor) plots for this option
     elif yearly:
-        for yr, data in sorted(yearly_dict.items()):
-            echo_plot(data['lons'], data['lats'], data['vels'], yr, method, source=source, mode='source')
+        yearly_orbital_path = f'{home}/clean source data/yearly orbital figures'
+        os.makedirs(yearly_orbital_path, exist_ok=True)
 
+        year_bins        = []
+        central_lons     = []
+        central_lats     = []
+        
+        for yr, data in sorted(yearly_dict.items()):
+            
+            # heat map of radiant distribution
+            h = echo_plot(data['lons'], data['lats'], data['vels'], yr, method, source=source, mode='source')
+            
+            # histograms of orbital parameters
+            vel_histo(data['vels'], data['orbitals'], yr, method, source=source, mode='source')
+
+            # distribution centroid calculation
+            lmda_center, beta_center = compute_heatmap_centroid(h)
+            if np.isfinite(lmda_center) and np.isfinite(beta_center):
+                print(f"Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
+            else:
+                print("Centroid: no populated bins found")
+            
+            year_bins.append(yr) 
+            central_lons.append(lmda_center)
+            central_lats.append(beta_center)
+
+        plt.figure(figsize=(10,5))
+
+        plt.plot(year_bins, central_lons, color='k')
+
+        plt.title(f'{source} Central Longitudes ' + r'$(\lambda - \lambda_{{\odot}})$ ' + f'- Observations from 2011-2025')
+        
+        plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+        plt.ylabel(f'Heliocentric Longitude (degrees)')
+
+        plt.grid(True, alpha=0.3)
+        plt.savefig(f'{yearly_orbital_path}/2011-2025{source}_longitudes.png')
+        plt.close()
+
+        plt.figure(figsize=(10,5))
+
+        plt.plot(year_bins, central_lats, color='k')
+
+        plt.title(f'{source} Central Latitudes ' +  r'$(\beta)$ ' +  f'- Observations from 2011-2025')
+        
+        plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+        plt.ylabel(f'Heliocentric Latitude (degrees)')
+
+        plt.grid(True, alpha=0.3)
+        plt.savefig(f'{yearly_orbital_path}/2011-2025{source}_latitudes.png')
+        plt.close()
+    
+    elif all_months:
+
+        all_months_path = f'{home}/clean source data/all months figures'
+        os.makedirs(all_months_path, exist_ok=True)
+
+        year = '2011-2025'
+
+        # this will hold centroids of data from 2011-2025 for each month
+        month_bins = []
+        central_lons = []
+        central_lats = []
+        
+        for month, data in sorted(all_months_dict.items()):
+
+            # heat map of radiant distribution
+            h = echo_plot(data['lons'], data['lats'], data['vels'], year, method, month=month, source=source, mode='all months')
+            
+            # histograms of orbital parameters
+            vel_histo(data['vels'], data['orbitals'], year, method, month=month, source=source, mode='all months')
+
+            # distribution centroid calculation
+            lmda_center, beta_center = compute_heatmap_centroid(h)
+            if np.isfinite(lmda_center) and np.isfinite(beta_center):
+                print(f"Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
+            else:
+                print("Centroid: no populated bins found")
+            
+            month_bins.append(month) 
+            central_lons.append(lmda_center)
+            central_lats.append(beta_center)
+
+        print('num of months: ', len(month_bins))
+        plt.figure(figsize=(10,5))
+
+        plt.plot(month_bins, central_lons, color='k')
+
+        plt.title(f'{source} Central Longitudes ' + r'$(\lambda - \lambda_{{\odot}})$ ' + f'- Observations from each month over 2011-2025')
+        
+        plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+        plt.ylabel(f'Heliocentric Longitude (degrees)')
+
+        plt.grid(True, alpha=0.3)
+        plt.savefig(f'{all_months_path}/2011-2025_allmonths_{source}_longitudes.png')
+        plt.close()
+
+        plt.figure(figsize=(10,5))
+
+        plt.plot(month_bins, central_lats, color='k')
+
+        plt.title(f'{source} Central Latitudes ' +  r'$(\beta)$ ' +  f'- Observations from each month over 2011-2025')
+        
+        plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+        plt.ylabel(f'Heliocentric Latitude (degrees)')
+
+        plt.grid(True, alpha=0.3)
+        plt.savefig(f'{all_months_path}/2011-2025_allmonths_{source}_latitudes.png')
+        plt.close()
+            
+                
     # make heat plots and scatter (number of meteor) plots for this option
     elif all_data:
-        echo_plot(longitudes, latitudes, velocities, '2011-2025', method, source=source, mode='source')
- 
+        h = echo_plot(longitudes, latitudes, velocities, '2011-2025', method, source=source, mode='source')
+
+        lmda_center, beta_center = compute_heatmap_centroid(h)
+        if np.isfinite(lmda_center) and np.isfinite(beta_center):
+            print(f"Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
+            # write these to txt file for later?
+        else:
+            print("Centroid: no populated bins found")
     
