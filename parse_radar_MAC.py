@@ -533,6 +533,337 @@ def station_check(num_stations, sdel):
         return False 
 
 
+def duplicate(parent, times, dists, angles, dr_count, da_count):
+    '''
+    This function goes through all stored clean events, and checks if any two events have similar times (within 0.01 seconds from eachother)
+    This will have to be called following the Parse function, but before the clean_echoes call, since we want the clean data to be written to our files
+    '''
+
+    # counts the events that are deleted for being a copy of another event
+    dr = 0
+    da = 0
+
+    # creating a copy of the dictionary and updating this with non-duplicate events. Using the old parent dictionary to iterate through events
+    parent_new = parent.copy()
+
+    try:
+    # runs if the number of clean events seen are even
+   
+        for i, key in enumerate(parent):
+            # in range(0, len(times), 2): # each iteration goes through two events stored in the parent dictionary
+            # print(key)
+                                
+            # nothing to compare againt at the very start or end of the dictionary
+            if i == 0 or i == len(parent) -1: # end of list, no comparison to be made
+                continue
+
+            # every other iteration rolls over the list's indices instead of doing pairs of times simultaneously - this should catch more duplicate events than before
+            time1 = times[i-1]
+            time2 = times[i]
+
+            dist1 = dists[i-1]
+            dist2 = dists[i]
+
+            theta1, phi1 = angles[i-1]
+            theta2, phi2 = angles[i]
+
+            hour1 = time1[0:2]
+            hour2 = time2[0:2]
+
+            minutes1 = time1[3:5]
+            minutes2 = time2[3:5]
+
+            seconds1 = float(time1[6:12])
+            seconds2 = float(time2[6:12])
+
+            # same hour
+            if hour1 == hour2:
+                # print('hour')
+                # same minute
+                if minutes1 == minutes2:
+                    # print(seconds1, seconds2)
+                    # we assume this is close enough for the two events to be a duplicate, which also depends on their position in the sky
+                    if abs(seconds1 - seconds2) < 0.010:
+
+                    # We only delete the event if the two happen at similar times AND they're close together in the sky
+                        # angle condition
+                        if abs(float(theta1) - float(theta2)) <=5 and abs(float(phi1) - float(phi2)) <=5:
+                        
+                            del parent_new[key]
+                            # print('deleted (angle)')
+                            da += 1
+                            # print(da_count)
+                        
+                        # range condition
+                        elif abs(float(dist1) - float(dist2)) <= 6: # if the difference between the meteor's distance from the Zehr is within 6 km of each other
+                            del parent_new[key]
+                            # print('deleted (range)')
+                            dr += 1
+
+
+        # print(f'deleted ranges: {dr}, deleted angles: {da}')
+        return parent_new, dr, da
+    
+    # should only happen at the end of the list, in which case I'll have to check the last event to see if it is a duplicate
+    except IndexError:
+        return parent_new, dr, da
+
+
+    # angular position test (simlilar theta/phi)
+
+  
+# Organizational function that saves clean echo data
+
+def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, method='all', data='annual'):
+
+    '''
+    This follows the parse function above, and writes the echo info for each clean event to an organized text file
+    '''
+
+    sl = date[-3:]
+
+    # defining a path to create a new folder containing saved info of clean echo data
+    if data == 'all': # saving files by solar longitude if data spans multiple years
+        sub_folder = f'{home}/clean file data/all clean events/{sl}'
+        os.makedirs(sub_folder, exist_ok=True)
+
+        path = os.path.join(sub_folder, f"clean-{date}-29.txt") # 29 MHz is the frequency used by CMOR
+    
+    elif data == 'annual': # saving files by year otherwise
+
+        sub_folder = f'{home}/clean file data/{date[0:4]} clean events'
+        os.makedirs(sub_folder, exist_ok=True)
+
+        path = os.path.join(sub_folder, f"clean-{date}-29.txt") # 29 MHz is the frequency used by CMOR
+
+    num_clean = len(parent) # number of clean echoes that satisfy the set velocity condition in Parse
+
+    # print(f'File {filename} has {num_clean} clean echoes, {num_locs} of which have defined coordinates that can be plotted')
+    # will add to this line later the more filtering I include, meaning I need to return more objects from my functions above
+
+    with open(path, "w") as clean_data:
+
+
+        if method == 'raw' or method == 'r':
+            clean_data.write(f'This file {filename} has {num_locs_init} detected events. No filtering methods were applied to reject events, this is the raw data that was seen.\n')
+            
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8}\n")
+            
+            for key, value in parent.items():
+                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10}")
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:>8} {value['Perihelion']:>8}\n')
+
+
+        if method == 'vel' or method == 'v':
+            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
+            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr, ")
+            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
+            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
+            
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10}\n\n")
+            
+            for key, value in parent.items():
+                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:>8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f}\n')
+       
+
+        elif method == 'int' or method == 'i':
+            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
+            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr ")
+            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
+            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
+
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Int Error':>10}\n\n")
+            
+            for key, value in parent.items():
+                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Interferometry Error']:>10}\n')
+
+
+        elif method == 'angle' or method == 'a':
+            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
+            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr ")
+            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
+            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
+            
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Radiant Error':>10}\n\n")
+            
+            for key, value in parent.items():
+                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Solid Angle Error']:>10}\n')
+
+
+        elif method == 'station' or method == 's':
+            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
+            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr ")
+            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
+            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
+            
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Station Error':>10}\n\n")
+            
+            for key, value in parent.items():
+                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Station Measurement Error']:>10}\n')
+
+
+        elif method == 'vel and int' or method.upper() == 'VI':
+            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
+            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr, ")
+            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
+            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
+            
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10}\n\n")
+            
+            for key, value in parent.items():
+                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']:>10} \n')
+
+
+        elif method == 'vel and int and angle' or method.upper() == 'VIA':
+            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
+            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr, ")
+            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
+            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
+            
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10} {'Radiant Error':>10}\n\n")
+            
+            for key, value in parent.items():
+                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']} {value['Solid Angle Error']:>10}\n')
+
+
+        elif method == 'all':
+            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
+            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr ")
+            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
+            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
+
+            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10} {'Radiant Error':>10} {'Station Error':>10}\n\n")
+
+            for key, value in parent.items():
+                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10}")
+                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']:>10} {value['Solid Angle Error']:>10} {value['Station Measurement Error']:>10}\n')
+
+    # could also write to a new txt file the total year data; total events seen no removed 
+
+    return num_clean # adding on to counter to track number of clean echoes per year that I can work with (for plotting and for other purposes)
+
+
+# Need ecliptic coordinates for plotting, which is what this funciton is for
+def grab_coords(parent):
+
+    '''
+    This function will be used to grab the ecliptic coordinates of the clean echoes for plotting
+    '''
+
+    # storing defined coordinates here to be used for plotting
+    latitudes = []
+    longitudes = []
+    geo_vels = []
+
+    ptn0_vels = []
+    del_ptn0_vels = []
+
+    # lists for the function duplicate; checking for overlapping events
+    times = []
+    dists = []
+    angles = []
+
+    orbital_params = []
+
+    semi_majors = []
+    eccentricities = []
+    inclinations = []
+    perihelions = []
+
+    c2h_lmda = []
+    c2h_beta = []
+
+    loc_count = 0 # to keep track of files that contain defined coordinates
+    keys_to_delete = [] # collect keys during iteration
+
+    # v are nested dictionaries containing important info for each meteor
+    for k, v in sorted(parent.items(), key=lambda kv: (kv[1]['date'], kv[1]['time'])):
+
+        time = v['time']
+
+        dist = v['R0']
+
+        theta = v['Theta']
+        phi = v['Phi']
+
+        l_comp = v['Cel2Hel Longitude']
+        b_comp = v['Cel2Hel Latitude']
+
+        times.append(time)
+        dists.append(dist)
+        angles.append([theta, phi])
+
+
+        beta = v['Ecliptic latitude']
+        lmda = v['Ecliptic longitude'] # some longitude coordinates are negative, we want them from 0-360 for plotting
+
+        vel_ptn0 = v['Pre-t0 velocity']
+        del_vel_ptn0 = v['Uncertainty in Pre-t0 velocity']
+
+        vel_g = v['Geocentric velocity']
+
+        a = float(v['Semi Major Axis'])
+        e = float(v['Eccentricity'])
+        i = float(v['Inclination'])
+        q = float(v['Perihelion'])
+
+        # checking for a defined ptn0 calculation
+        if vel_ptn0[0] == '.' or del_vel_ptn0[0] == '.':
+            keys_to_delete.append(k)
+            # print('deleted for having undefined coordinates')
+            continue
+
+        # checking for a defined set of ecliptic coordinates
+        if beta == '0.00' or lmda == '0.00': # should change this to check for other parameters too in case it is removing echoes that can be worked with
+                keys_to_delete.append(k)
+                # print('deleted for having undefined coordinates')
+                continue # skip rows with missing speed data; does not seem to change anything, as any file without these coordinates already lacks pre-to velocity
+        
+        # curently not skipping meteors that have undefined values for a,e or i. only plotting the ones with defined values
+        if 0.0 < a < 10.0:
+            semi_majors.append(a)
+        if str(e)[0] != '.': 
+            eccentricities.append(e)
+        if str(i)[0] != '.':
+            inclinations.append(i)
+        if str(q)[0] != '.':
+            perihelions.append(q)
+
+        # counting the meteors we can make distributions with
+        loc_count += 1
+        # lmda = long_transform(float(lmda)) # transforming longitude to 0-360 scale for plotting
+        # print(lmda)
+
+        # Using these three for 3d plots
+        latitudes.append(float(beta))
+        longitudes.append(float(lmda))
+        geo_vels.append(float(vel_g))
+
+        ptn0_vels.append(float(vel_ptn0))
+        del_ptn0_vels.append(float(del_vel_ptn0))
+
+        c2h_lmda.append(float(l_comp))
+        c2h_beta.append(float(b_comp))
+
+    # Delete collected keys after iteration completes
+    for k in keys_to_delete:
+        del parent[k]
+
+    orbital_params.append(semi_majors)
+    orbital_params.append(eccentricities)
+    orbital_params.append(inclinations)
+    orbital_params.append(perihelions)
+
+    # print(times)
+    return latitudes, longitudes, ptn0_vels, del_ptn0_vels, geo_vels, keys_to_delete, loc_count, times, dists, angles, orbital_params, c2h_lmda, c2h_beta # also returning the number of files with defined coordinates for more precise tracking purposes
+
+
 def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0, bounds=None, save=False):
     '''
     put meteor distribution into a voxel (cubic space)
@@ -660,6 +991,7 @@ def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0,
 
         return H, edges, lmda, beta, vels # edges contains three arrays of coordinates by bin (lon, lat, vel)
 
+
 def voxel_map_counts(counts, edges, active_lmda, active_beta, active_vels, threshold=0):
     
     '''
@@ -782,8 +1114,8 @@ def voxel_with_hull(year, counts, edges, active_lmda, active_beta, active_vels, 
 
     
 
-    fig.show() # use this line for linux (and maybe windows) version
-    # fig.write_html("meteor_plot.html", auto_open=True) # use this line for mac version
+    # fig.show() # use this line for linux (and maybe windows) version
+    fig.write_html("meteor_plot.html", auto_open=True) # use this line for mac version
 
 
 def voxel_map_parse(year, name, edges):
@@ -1186,338 +1518,6 @@ def scatter_map(lmda, beta, year, path, method, month=None, meteor_source=None):
     plt.show()
 
 
-
-def duplicate(parent, times, dists, angles, dr_count, da_count):
-    '''
-    This function goes through all stored clean events, and checks if any two events have similar times (within 0.01 seconds from eachother)
-    This will have to be called following the Parse function, but before the clean_echoes call, since we want the clean data to be written to our files
-    '''
-
-    # counts the events that are deleted for being a copy of another event
-    dr = 0
-    da = 0
-
-    # creating a copy of the dictionary and updating this with non-duplicate events. Using the old parent dictionary to iterate through events
-    parent_new = parent.copy()
-
-    try:
-    # runs if the number of clean events seen are even
-   
-        for i, key in enumerate(parent):
-            # in range(0, len(times), 2): # each iteration goes through two events stored in the parent dictionary
-            # print(key)
-                                
-            # nothing to compare againt at the very start or end of the dictionary
-            if i == 0 or i == len(parent) -1: # end of list, no comparison to be made
-                continue
-
-            # every other iteration rolls over the list's indices instead of doing pairs of times simultaneously - this should catch more duplicate events than before
-            time1 = times[i-1]
-            time2 = times[i]
-
-            dist1 = dists[i-1]
-            dist2 = dists[i]
-
-            theta1, phi1 = angles[i-1]
-            theta2, phi2 = angles[i]
-
-            hour1 = time1[0:2]
-            hour2 = time2[0:2]
-
-            minutes1 = time1[3:5]
-            minutes2 = time2[3:5]
-
-            seconds1 = float(time1[6:12])
-            seconds2 = float(time2[6:12])
-
-            # same hour
-            if hour1 == hour2:
-                # print('hour')
-                # same minute
-                if minutes1 == minutes2:
-                    # print(seconds1, seconds2)
-                    # we assume this is close enough for the two events to be a duplicate, which also depends on their position in the sky
-                    if abs(seconds1 - seconds2) < 0.010:
-
-                    # We only delete the event if the two happen at similar times AND they're close together in the sky
-                        # angle condition
-                        if abs(float(theta1) - float(theta2)) <=5 and abs(float(phi1) - float(phi2)) <=5:
-                        
-                            del parent_new[key]
-                            # print('deleted (angle)')
-                            da += 1
-                            # print(da_count)
-                        
-                        # range condition
-                        elif abs(float(dist1) - float(dist2)) <= 6: # if the difference between the meteor's distance from the Zehr is within 6 km of each other
-                            del parent_new[key]
-                            # print('deleted (range)')
-                            dr += 1
-
-
-        # print(f'deleted ranges: {dr}, deleted angles: {da}')
-        return parent_new, dr, da
-    
-    # should only happen at the end of the list, in which case I'll have to check the last event to see if it is a duplicate
-    except IndexError:
-        return parent_new, dr, da
-
-
-    # angular position test (simlilar theta/phi)
-
-  
-# Organizational function that saves clean echo data
-
-def clean_echoes(parent, num_locs_init, date, folder, filename, num_dr, num_da, method='all', data='annual'):
-
-    '''
-    This follows the parse function above, and writes the echo info for each clean event to an organized text file
-    '''
-
-    sl = date[-3:]
-
-    # defining a path to create a new folder containing saved info of clean echo data
-    if data == 'all': # saving files by solar longitude if data spans multiple years
-        sub_folder = f'{home}/clean file data/all clean events/{sl}'
-        os.makedirs(sub_folder, exist_ok=True)
-
-        path = os.path.join(sub_folder, f"clean-{date}-29.txt") # 29 MHz is the frequency used by CMOR
-    
-    elif data == 'annual': # saving files by year otherwise
-
-        sub_folder = f'{home}/clean file data/{date[0:4]} clean events'
-        os.makedirs(sub_folder, exist_ok=True)
-
-        path = os.path.join(sub_folder, f"clean-{date}-29.txt") # 29 MHz is the frequency used by CMOR
-
-    num_clean = len(parent) # number of clean echoes that satisfy the set velocity condition in Parse
-
-    # print(f'File {filename} has {num_clean} clean echoes, {num_locs} of which have defined coordinates that can be plotted')
-    # will add to this line later the more filtering I include, meaning I need to return more objects from my functions above
-
-    with open(path, "w") as clean_data:
-
-
-        if method == 'raw' or method == 'r':
-            clean_data.write(f'This file {filename} has {num_locs_init} detected events. No filtering methods were applied to reject events, this is the raw data that was seen.\n')
-            
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8}\n")
-            
-            for key, value in parent.items():
-                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10}")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:>8} {value['Perihelion']:>8}\n')
-
-
-        if method == 'vel' or method == 'v':
-            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
-            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr, ")
-            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
-            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
-            
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10}\n\n")
-            
-            for key, value in parent.items():
-                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:>8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f}\n')
-       
-
-        elif method == 'int' or method == 'i':
-            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
-            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr ")
-            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
-            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
-
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Int Error':>10}\n\n")
-            
-            for key, value in parent.items():
-                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Interferometry Error']:>10}\n')
-
-
-        elif method == 'angle' or method == 'a':
-            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
-            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr ")
-            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
-            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
-            
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Radiant Error':>10}\n\n")
-            
-            for key, value in parent.items():
-                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Solid Angle Error']:>10}\n')
-
-
-        elif method == 'station' or method == 's':
-            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
-            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr ")
-            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
-            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
-            
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Station Error':>10}\n\n")
-            
-            for key, value in parent.items():
-                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Station Measurement Error']:>10}\n')
-
-
-        elif method == 'vel and int' or method.upper() == 'VI':
-            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
-            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr, ")
-            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
-            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
-            
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10}\n\n")
-            
-            for key, value in parent.items():
-                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']:>10} \n')
-
-
-        elif method == 'vel and int and angle' or method.upper() == 'VIA':
-            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
-            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr, ")
-            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
-            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
-            
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10} {'Radiant Error':>10}\n\n")
-            
-            for key, value in parent.items():
-                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10} ")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']} {value['Solid Angle Error']:>10}\n')
-
-
-        elif method == 'all':
-            clean_data.write(f"This file {filename} has {num_locs_init} detected events that satisfy the restrictions set for what a clean echo is. There are {num_clean} events these have a defined set of ecliptic coordinates.\n\n")
-            clean_data.write(f"For events within 10 milliseconds of eachother, {num_dr} events have been removed from being within 6km of each other relative to the Zehr ")
-            clean_data.write(f"and {num_da} events have been removed for being within 5 degrees from their zenithal and azimuthal positions in the sky.\n\n")
-            clean_data.write(f"There are {num_locs_init - num_clean} events that were removed for not having a defined set of ecliptic coordinates.\n\n")
-
-            clean_data.write(f"{'Date':>12} {'Time':>8} {'Num Stations':>12} {'Ecl Lambda':>10} {'Ecl Beta':>10} {'Solar Lambda':>10} {'R0':>8} {'Theta':>8} {'Phi':>8} {'vel_m':>10} {'vel_ptn0':>10} {'vel_geo':>10} {'alpha_g':>10} {'delta_g':>10} {'del_rad_g':>12} {'a':>8} {'e':>8} {'i':>8} {'q':>8} {'Percent difference':>10} {'Int Error':>10} {'Radiant Error':>10} {'Station Error':>10}\n\n")
-
-            for key, value in parent.items():
-                clean_data.write(f"{value['date']:>12} {value['time']:>8} {value['Number of Stations']:>12} {value['Ecliptic longitude']:>10} {value['Ecliptic latitude']:>10} {value['Solar longitude']:>10} {value['R0']:>8} {value['Theta']:>8} {value['Phi']:>8} {value['Time of flight velocity']:>10} {value['Pre-t0 velocity']:>10} {value['Geocentric velocity']:>10}")
-                clean_data.write(f'{value['Geocentric Right Ascension']:>10} {value['Geocentric Declination']:>10} {value['Geocentric Radiant Uncertainty']:>12} {value['Semi Major Axis']:>8} {value['Eccentricity']:>8} {value['Inclination']:8} {value['Perihelion']:>8} {value['Percent difference']:>10.2f} {value['Interferometry Error']:>10} {value['Solid Angle Error']:>10} {value['Station Measurement Error']:>10}\n')
-
-    # could also write to a new txt file the total year data; total events seen no removed 
-
-    return num_clean # adding on to counter to track number of clean echoes per year that I can work with (for plotting and for other purposes)
-
-
-# Need ecliptic coordinates for plotting, which is what this funciton is for
-def grab_coords(parent):
-
-    '''
-    This function will be used to grab the ecliptic coordinates of the clean echoes for plotting
-    '''
-
-    # storing defined coordinates here to be used for plotting
-    latitudes = []
-    longitudes = []
-    geo_vels = []
-
-    ptn0_vels = []
-    del_ptn0_vels = []
-
-    # lists for the function duplicate; checking for overlapping events
-    times = []
-    dists = []
-    angles = []
-
-    orbital_params = []
-
-    semi_majors = []
-    eccentricities = []
-    inclinations = []
-    perihelions = []
-
-    c2h_lmda = []
-    c2h_beta = []
-
-    loc_count = 0 # to keep track of files that contain defined coordinates
-    keys_to_delete = [] # collect keys during iteration
-
-    # v are nested dictionaries containing important info for each meteor
-    for k, v in sorted(parent.items(), key=lambda kv: (kv[1]['date'], kv[1]['time'])):
-
-        time = v['time']
-
-        dist = v['R0']
-
-        theta = v['Theta']
-        phi = v['Phi']
-
-        l_comp = v['Cel2Hel Longitude']
-        b_comp = v['Cel2Hel Latitude']
-
-        times.append(time)
-        dists.append(dist)
-        angles.append([theta, phi])
-
-
-        beta = v['Ecliptic latitude']
-        lmda = v['Ecliptic longitude'] # some longitude coordinates are negative, we want them from 0-360 for plotting
-
-        vel_ptn0 = v['Pre-t0 velocity']
-        del_vel_ptn0 = v['Uncertainty in Pre-t0 velocity']
-
-        vel_g = v['Geocentric velocity']
-
-        a = float(v['Semi Major Axis'])
-        e = float(v['Eccentricity'])
-        i = float(v['Inclination'])
-        q = float(v['Perihelion'])
-
-        # checking for a defined ptn0 calculation
-        if vel_ptn0[0] == '.' or del_vel_ptn0[0] == '.':
-            keys_to_delete.append(k)
-            # print('deleted for having undefined coordinates')
-            continue
-
-        # checking for a defined set of ecliptic coordinates
-        if beta == '0.00' or lmda == '0.00': # should change this to check for other parameters too in case it is removing echoes that can be worked with
-                keys_to_delete.append(k)
-                # print('deleted for having undefined coordinates')
-                continue # skip rows with missing speed data; does not seem to change anything, as any file without these coordinates already lacks pre-to velocity
-        
-        # curently not skipping meteors that have undefined values for a,e or i. only plotting the ones with defined values
-        if 0.0 < a < 10.0:
-            semi_majors.append(a)
-        if str(e)[0] != '.': 
-            eccentricities.append(e)
-        if str(i)[0] != '.':
-            inclinations.append(i)
-        if str(q)[0] != '.':
-            perihelions.append(q)
-
-        # counting the meteors we can make distributions with
-        loc_count += 1
-        # lmda = long_transform(float(lmda)) # transforming longitude to 0-360 scale for plotting
-        # print(lmda)
-
-        # Using these three for 3d plots
-        latitudes.append(float(beta))
-        longitudes.append(float(lmda))
-        geo_vels.append(float(vel_g))
-
-        ptn0_vels.append(float(vel_ptn0))
-        del_ptn0_vels.append(float(del_vel_ptn0))
-
-        c2h_lmda.append(float(l_comp))
-        c2h_beta.append(float(b_comp))
-
-    # Delete collected keys after iteration completes
-    for k in keys_to_delete:
-        del parent[k]
-
-    orbital_params.append(semi_majors)
-    orbital_params.append(eccentricities)
-    orbital_params.append(inclinations)
-    orbital_params.append(perihelions)
-
-    # print(times)
-    return latitudes, longitudes, ptn0_vels, del_ptn0_vels, geo_vels, keys_to_delete, loc_count, times, dists, angles, orbital_params, c2h_lmda, c2h_beta # also returning the number of files with defined coordinates for more precise tracking purposes
-
-
 def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=None, mode='year', map_mode='density', bounds=None, shower_helios=None, daily=[False, None], data='annual'):
     '''
     This function takes the ecliptic coordinates of clean echoes that satisfy set restrictions and maps them to a 2 dimensional grid representing a celestial 'sphere'
@@ -1761,29 +1761,36 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
         # plt.savefig(f'{plot_path}/{year}_radiantDist.png')
         # plt.show()
 
-        elif mode == 'all months':
-
-            plot_path = f'{home}/clean source data/all months figures/{month} {source} clean figures' # new directory made
-            os.makedirs(plot_path, exist_ok=True)
-
-
-            if map_mode == 'density':
-                
-               
-                h = heat_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily)
-            
-            elif map_mode == 'velocity':
-
-                # vel_map(raw_lons, raw_lats, vels, year, plot_path)
-
-                vel_map(lmda, beta, vels, year, plot_path, method)
-        
-
         else:
             
             # scatter_map(raw_lons, raw_lats, year, plot_path)
 
             scatter_map(lmda, beta, year, plot_path, method)
+
+
+    elif mode == 'all months':
+
+        plot_path = f'{home}/clean source data/all months figures/{month} {source} clean figures' # new directory made
+        os.makedirs(plot_path, exist_ok=True)
+
+
+        if map_mode == 'density':
+            
+            h = heat_map(lmda, beta, year, plot_path, method, month=month, meteor_source=source, daily_mode=daily)
+
+        
+        elif map_mode == 'velocity':
+
+            # vel_map(raw_lons, raw_lats, vels, year, plot_path)
+
+            vel_map(lmda, beta, vels, year, plot_path, method)
+        
+        else:
+            
+            # scatter_map(raw_lons, raw_lats, year, plot_path)
+
+            scatter_map(lmda, beta, year, plot_path, method)
+
 
     # add a successive plot here; showing distribution after each successive filter applied
 
@@ -1930,7 +1937,15 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
 
         figure = plt.figure(figsize=(10,5))
 
-        n, bins, patches = plt.hist(vels, bins=200)
+        # n, bins, patches = plt.hist(vels, bins=200) # use this line for plotting bins
+        n, bins = np.histogram(vels, bins=100) # use this line for scatter plots
+
+        # centers of bins corresponding to bin count is what is plotted instead
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+
+        plt.plot(bin_centers, n, color='k')
+        plt.scatter(bin_centers, n, marker='*', s=30, color='k')
+
         # print(n, bins, patches) # counts, mean vel per bin, object type? only worry about first two
         bin_index = np.digitize(mean, bins) - 1
         bin_index = np.clip(bin_index, 0, len(n) - 1)
@@ -1940,19 +1955,19 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
 
         # will ask which width to go with, but here are a few options
 
-        plt.axvline(mean, color='red', label='Mean Velocity') 
-        plt.axvline(mean - std, color='red', linestyle='--')
-        plt.axvline(mean + std, color='red', linestyle='--')
+        # plt.axvline(mean, color='red', label='Mean Velocity') 
+        # plt.axvline(mean - std, color='red', linestyle='--')
+        # plt.axvline(mean + std, color='red', linestyle='--')
 
-        plt.axvline(median, color='orange', label='Median Velocity')
-        plt.axvline(median - std, color='orange', linestyle='-')
-        plt.axvline(median + std, color='orange', linestyle='-')
+        # plt.axvline(median, color='orange', label='Median Velocity')
+        # plt.axvline(median - std, color='orange', linestyle='-')
+        # plt.axvline(median + std, color='orange', linestyle='-')
 
-        plt.axvline(rms, color='green', label='RMS Velocity')
-        plt.axvline(rms - std, color='green', linestyle='-.')
-        plt.axvline(rms + std, color='green', linestyle='-.')
+        # plt.axvline(rms, color='green', label='RMS Velocity')
+        # plt.axvline(rms - std, color='green', linestyle='-.')
+        # plt.axvline(rms + std, color='green', linestyle='-.')
 
-        plt.axhline(n[bin_index]/2, color='black', label='Full Width Half Maximum', linestyle='--')
+        # plt.axhline(n[bin_index]/2, color='black', label='Full Width Half Maximum', linestyle='--')
 
         plt.xlabel('Geocentric Velocities (km/s)')
         plt.ylabel('Number of Events')
@@ -1972,18 +1987,17 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
 
         # Writing the histogram data to a txt file
         data_path = f'{home}/clean file data/{year} clean events'
+        os.makedirs(data_path, exist_ok=True)
         data_file = os.path.join(data_path, f"FULL-{year}-29.txt")
 
         with open(data_file, 'a') as vel_data:
-        
+            
             vel_data.write(f'\nMean Velocity: {mean} km/s\n') # should include uncertanties at some point too
             vel_data.write(f'Median Velocity: {median} km/s\n')
             vel_data.write(f'Root Mean Square Velocity: {rms} km/s\n')
             vel_data.write(f'Standard Deviation: +/-{std} km/s\n')
             vel_data.write(f'Distribution Peak (Mean Index): {n[bin_index]}\n')
             vel_data.write(f'Distribution Width (mean +/- std): {2*std} km/s\n')
-        
-        
 
         # use this to keep track of how many events per bin are making it through the filtering
         case_vels_path = f'{home}/clean file data/0602_2/{method} events'
@@ -2003,7 +2017,14 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         # Semi Major Axes plotting
         figure = plt.figure(figsize=(10,5))
 
-        n, bins, patches = plt.hist(axes, bins=200)
+        # n, bins, patches = plt.hist(axes, bins=200)
+        n, bins = np.histogram(axes, bins=100) # use this line for scatter plots
+
+        # centers of bins corresponding to bin count is what is plotted instead
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+
+        plt.plot(bin_centers, n, color='k')
+        plt.scatter(bin_centers, n, marker='*', s=30, color='k')
 
         plt.xlabel('Semi Major Axes (AU)')
         plt.ylabel('Number of Events')
@@ -2023,7 +2044,14 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         # Eccentricity plotting
         figure = plt.figure(figsize=(10,5))
 
-        n, bins, patches = plt.hist(eccens, bins=200)
+        # n, bins, patches = plt.hist(eccens, bins=200)
+        n, bins = np.histogram(eccens, bins=100) # use this line for scatter plots
+
+        # centers of bins corresponding to bin count is what is plotted instead
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+
+        plt.plot(bin_centers, n, color='k')
+        plt.scatter(bin_centers, n, marker='*', s=30, color='k')
 
         plt.xlabel('Eccentricities')
         plt.ylabel('Number of Events')
@@ -2043,7 +2071,14 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         # Inclincation plotting
         figure = plt.figure(figsize=(10,5))
 
-        n, bins, patches = plt.hist(incls, bins=200)
+        # n, bins, patches = plt.hist(incls, bins=200)
+        n, bins = np.histogram(incls, bins=100) # use this line for scatter plots
+
+        # centers of bins corresponding to bin count is what is plotted instead
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+
+        plt.plot(bin_centers, n, color='k')
+        plt.scatter(bin_centers, n, marker='*', s=30, color='k')
 
         plt.xlabel('Inclinations (deg)')
         plt.ylabel('Number of Events')
@@ -2062,7 +2097,14 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         # Perihelion plotting
         figure = plt.figure(figsize=(10,5))
 
-        n, bins, patches = plt.hist(peris, bins=200)
+        # n, bins, patches = plt.hist(peris, bins=200)
+        n, bins = np.histogram(peris, bins=100) # use this line for scatter plots
+
+        # centers of bins corresponding to bin count is what is plotted instead
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+
+        plt.plot(bin_centers, n, color='k')
+        plt.scatter(bin_centers, n, marker='*', s=30, color='k')
 
         plt.xlabel('Perihelions (AU)')
         plt.ylabel('Number of Events')
@@ -2145,7 +2187,12 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         # Semi Major Axes plotting
         figure = plt.figure(figsize=(10,5))
 
-        n, bins, patches = plt.hist(axes, bins=200)
+        n, bins = np.histogram(axes, bins=100) # histogram calculates the data without plotting it
+
+        bin_centers = (bins[:-1] + bins[1:]) / 2
+
+        plt.plot(bin_centers, n, color='k')
+        plt.scatter(bin_centers, n, marker='*', s=30, color='k')
 
         plt.xlabel('Semi Major Axes (AU)')
         plt.ylabel('Number of Events')
@@ -2376,7 +2423,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
 
         figure = plt.figure(figsize=(10,5))
 
-        n, bins, patches = plt.hist(vels, bins=50)
+        n, bins, patches = plt.hist(vels, bins=50) 
         bin_index = np.digitize(mean, bins) - 1
         bin_index = np.clip(bin_index, 0, len(n) - 1)
 
@@ -2516,8 +2563,8 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
 
         plt.grid(alpha=0.3)
         plt.legend()
-        plt.savefig(f'{plot_path}/ALL{month}{source}_velocities.png')
-        plt.show()
+        plt.savefig(f'{plot_path}/{month}{source}_velocities.png')
+        plt.close()
 
         num_bins = len(n)
 
@@ -2549,8 +2596,8 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.xlim(-10,10)
         plt.grid(alpha=0.3)
         # plt.legend()
-        plt.savefig(f'{plot_path}/ALL{month}{source}_semimajoraxes.png')
-        plt.show()
+        plt.savefig(f'{plot_path}/{month}{source}_semimajoraxes.png')
+        plt.close()
 
 
         # Eccentricity plotting
@@ -2564,8 +2611,8 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
 
         plt.grid(alpha=0.3)
         # plt.legend()
-        plt.savefig(f'{plot_path}/ALL{month}{source}_eccentricities.png')
-        plt.show()
+        plt.savefig(f'{plot_path}/{month}{source}_eccentricities.png')
+        plt.close()
 
 
         # Inclincation plotting
@@ -2579,8 +2626,8 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
 
         plt.grid(alpha=0.3)
         # plt.legend()
-        plt.savefig(f'{plot_path}/ALL{month}{source}_inclincations.png')
-        plt.show()
+        plt.savefig(f'{plot_path}/{month}{source}_inclincations.png')
+        plt.close()
 
 
         # Perihelion plotting
@@ -2594,8 +2641,8 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
 
         plt.grid(alpha=0.3)
         # plt.legend()
-        plt.savefig(f'{plot_path}/ALL{month}{source}_perihelions.png')
-        plt.show()
+        plt.savefig(f'{plot_path}/{month}{source}_perihelions.png')
+        plt.close()
 
         mean_a, mean_e, mean_i, mean_q = np.mean(axes), np.mean(eccens), np.mean(incls), np.mean(peris)
         std_a, std_e, std_i, std_q = np.std(axes), np.std(eccens), np.std(incls), np.std(peris)
@@ -2697,7 +2744,7 @@ def monthly_plotter(year, month, folder, file, method, map_method='scatter'):
         latitudes = []
         velocities = []
 
-        axes, eccens, incls = [], [], []
+        axes, eccens, incls, peris = [], [], [], []
 
         orbitals = []
 
@@ -2732,6 +2779,7 @@ def monthly_plotter(year, month, folder, file, method, map_method='scatter'):
                         a = params[15]
                         e = params[16]
                         i = params[17]
+                        q = params[18]
 
                         # print(lmda, beta)
 
@@ -2745,10 +2793,12 @@ def monthly_plotter(year, month, folder, file, method, map_method='scatter'):
 
                         eccens.append(float(e))
                         incls.append(float(i))
+                        peris.append(float(q))
 
         orbitals.append(axes)
         orbitals.append(eccens)
         orbitals.append(incls)
+        orbitals.append(peris)
 
         print(f'Number of Echoes seen in {month}/{year}: {echo_count}')
 
@@ -5684,8 +5734,8 @@ elif raw_or_clean == '2':
 
 if raw_or_clean == '3':
 
-    clean_folder = '/home/zaubs/Desktop/radar/clean shower data/sporadics'
-    shower_dates_folder = '/home/zaubs/Desktop/radar/clean shower data/shower meteor dates'
+    clean_folder = f'{home}/clean shower data/sporadics'
+    shower_dates_folder = f'{home}/clean shower data/shower meteor dates'
 
     clean_folder_path = os.listdir(clean_folder)
     shower_dates_folder_path = os.listdir(shower_dates_folder)
@@ -5744,7 +5794,7 @@ if raw_or_clean == '3':
     yearly_daily_dict   = {}  # year -> slon -> data
     yearly_ten_day_dict = {}  # year -> slon[i]:slon[i+9] -> data
     yearly_monthly_dict = {}  # year -> month -> data
-    all_months_dict = {}    # month -> data
+    all_months_dict = {}      # month -> data
 
     # lists to store parameters for all data
     longitudes = []
@@ -5755,6 +5805,8 @@ if raw_or_clean == '3':
     eccens = []
     incls = []
     peris = []
+
+    orbitals = []
 
     shower_count = 0
 
@@ -5973,6 +6025,7 @@ if raw_or_clean == '3':
         yearly_dict[year]['orbitals'].append(yearly_dict[year]['incls'])
         yearly_dict[year]['orbitals'].append(yearly_dict[year]['peris'])
 
+    # for full monthly collection plots
     for month in range(1, 13):
 
         if month < 10:
@@ -5984,6 +6037,12 @@ if raw_or_clean == '3':
         all_months_dict[month]['orbitals'].append(all_months_dict[month]['eccens'])
         all_months_dict[month]['orbitals'].append(all_months_dict[month]['incls'])
         all_months_dict[month]['orbitals'].append(all_months_dict[month]['peris'])
+
+    # for full data collection plots
+    orbitals.append(axes)
+    orbitals.append(eccens)
+    orbitals.append(incls)
+    orbitals.append(peris)
 
 
     print(f'Shower meteors excluded: {shower_count}')
@@ -6055,7 +6114,7 @@ if raw_or_clean == '3':
             plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
 
             plt.grid(True, alpha=0.3)
-            plt.savefig(f'{ten_day_folder_path}/{year}{source}_longitudes.png')
+            plt.savefig(f'{ten_day_folder_path}/{yr}{source}_longitudes.png')
             plt.close()
 
             plt.figure(figsize=(10,5))
@@ -6070,7 +6129,7 @@ if raw_or_clean == '3':
             plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
 
             plt.grid(True, alpha=0.3)
-            plt.savefig(f'{ten_day_folder_path}/{year}{source}_latitudes.png')
+            plt.savefig(f'{ten_day_folder_path}/{yr}{source}_latitudes.png')
             plt.close()
 
     elif monthly:
@@ -6098,7 +6157,7 @@ if raw_or_clean == '3':
             
             # heat map of radiant distribution
             h = echo_plot(data['lons'], data['lats'], data['vels'], yr, method, source=source, mode='source')
-            
+            print('lengths: ', len(data['lons']), len(data['lats']))
             # histograms of orbital parameters
             vel_histo(data['vels'], data['orbitals'], yr, method, source=source, mode='source')
 
@@ -6152,10 +6211,12 @@ if raw_or_clean == '3':
         central_lats = []
         
         for month, data in sorted(all_months_dict.items()):
+            print(month, len(data['lons']), len(data['lats']))
 
             # heat map of radiant distribution
             h = echo_plot(data['lons'], data['lats'], data['vels'], year, method, month=month, source=source, mode='all months')
-            
+            # print(h)
+
             # histograms of orbital parameters
             vel_histo(data['vels'], data['orbitals'], year, method, month=month, source=source, mode='all months')
 
@@ -6200,8 +6261,14 @@ if raw_or_clean == '3':
                 
     # make heat plots and scatter (number of meteor) plots for this option
     elif all_data:
-        h = echo_plot(longitudes, latitudes, velocities, '2011-2025', method, source=source, mode='source')
 
+        year = '2011-2025'
+
+        h = echo_plot(longitudes, latitudes, velocities, year, method, source=source, mode='source')
+
+        vel_histo(velocities, orbitals, 'all', method, source=source, mode='year')
+
+    
         lmda_center, beta_center = compute_heatmap_centroid(h)
         if np.isfinite(lmda_center) and np.isfinite(beta_center):
             print(f"Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
