@@ -30,6 +30,8 @@ from pathlib import Path
 from scipy.spatial import ConvexHull
 import plotly.graph_objects as go
 
+import hdbscan
+
 
 # My imported functions
 from cel2hel2cel import *
@@ -44,15 +46,15 @@ from shower_bounds import Shower_Bounds, shower_boundaries, shower_slon
 home = Path.home() / 'Desktop/radar'
 
 # Source locations by ecliptic coordinates organized by [long, lat]
-helion = [np.arange(360, 320, -1), np.arange(-15, 15)]
+helion = [np.arange(380, 320, -1), np.arange(-25, 30)]
 
 helion_plus = [np.arange(360, 320, -1), np.arange(0, 15)]
 helion_minus = [np.arange(360, 320, -1), np.arange(-15, 0)]
 
-antihelion = [np.arange(220, 180, -1), np.arange(-15, 15)] 
-north_apex = [np.arange(295, 245, -1), np.arange(5, 45)] # 25 degree radius lon, 15 degree radius lat
-south_apex = [np.arange(300, 240, -1), np.arange(-50, 0)] # 30 degree radius lon, 25 degree radius lat
-north_toroidal = [np.arange(360, 180, -1), np.arange(50, 75)]
+antihelion = [np.arange(222, 175, -1), np.arange(-18, 25)] 
+north_apex = [np.arange(310, 230, -1), np.arange(3, 45)] # 25 degree radius lon, 15 degree radius lat
+south_apex = [np.arange(310, 230, -1), np.arange(-35, -3)] # 30 degree radius lon, 25 degree radius lat
+north_toroidal = [np.arange(360, 180, -1), np.arange(50, 80)]
 
 
 def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False, 'ARI']):
@@ -1161,7 +1163,16 @@ def voxel_map_parse(year, name, edges):
 
     # voxel dimensions
     
+# # after lmda, beta are converted to arrays, before or after hist2d - either works
+# coords = np.column_stack((lmda, beta))
 
+# clusterer = hdbscan.HDBSCAN(min_cluster_size=15, min_samples=5)
+# labels = clusterer.fit_predict(coords)  # -1 = noise, 0,1,2... = cluster id
+
+# # scatter overlay: noise points dim, clustered points colored by cluster id
+# noise_mask = labels == -1
+# ax.scatter(lmda[noise_mask], beta[noise_mask], s=2, color='gray', alpha=0.3, label='Noise')
+# ax.scatter(lmda[~noise_mask], beta[~noise_mask], s=4, c=labels[~noise_mask], cmap='tab10', alpha=0.8, label='Clusters')
 
 def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, shower_name=None, background=False, no_shower=False, bounds=None, helios=None, daily_mode=[False, None], datatype='annual'): # include month mode at some point for labelling
     '''
@@ -1402,11 +1413,245 @@ def heat_map(lmda, beta, year, path, method, month=None, meteor_source=None, sho
 # If i return num_density to echo plot, will need to either work with it within that function, or return it again using echo plot
 
 
+# == trying a few clustering algorithms below == #
+
+def cluster_map(lmda, beta, year, path, method, month=None, meteor_source=None, shower_name=None, background=False, no_shower=False, bounds=None, helios=None, daily_mode=[False, None], datatype='annual'): # include month mode at some point for labelling
+    '''
+    This function generates a heat map of the user specified orbit file, based on meteor counts per bin
+    Month and source modes may be worked individually or simultaneously - in terms of saving distinct files of data
+    Shower mode is best worked on its own - mainly using this mode to collect the number density matrices for days before/after shower activity
+
+    tweak the following as needed:
+    min_cluster_size — minimum meteors to count as a real cluster (not noise). Start around 15 to 30 depending on your typical bin density; too low and every small clump becomes a "cluster."
+    min_samples — controls how conservative HDBSCAN is about calling something noise vs. cluster. Higher = more conservative, more points labeled -1.
+    
+    '''
+
+    figure, ax = plt.subplots(figsize=(10,5))
+
+    lmda = np.asarray(lmda, dtype=float)
+    beta  = np.asarray(beta, dtype=float)
+
+    h = ax.hist2d(lmda, beta, bins=200, cmap='plasma') # should save files by bin size now for different runs
+
+    binsize = len(h[0])
+    # print(binsize, len(lmda), len(beta))   
+
+    # after lmda, beta are converted to arrays, before or after hist2d - either works
+    coords = np.column_stack((lmda, beta))
+
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=30, min_samples=5)
+    labels = clusterer.fit_predict(coords)  # -1 = noise, 0,1,2... = cluster id
+
+    # scatter overlay: noise points dim, clustered points colored by cluster id
+    noise_mask = labels == -1
+    ax.scatter(lmda[noise_mask], beta[noise_mask], s=2, color='gray', alpha=0.3, label='Noise')
+    ax.scatter(lmda[~noise_mask], beta[~noise_mask], s=4, c=labels[~noise_mask], cmap='tab10', alpha=0.8, label='Clusters')
+
+    # use this to show which shower regions are being covered by the set dictionaries
+    # currently all clusters seen in the 2025 data set are covered - will look through other years when back on linux desktop
+    if helios is not None:
+
+        # creating shaded regions of each heliocentric shower coordinate below
+        for name, coords in helios.items():
+
+            lmda_bounds, beta_bounds, vel_bounds = shower_radius(name, coords, bounds)
+
+            plt.fill_between(lmda, beta, where=(lmda_bounds[0] <= lmda) & (lmda <= lmda_bounds[1]) & (beta_bounds[0] <= beta) & (beta <= beta_bounds[1]), color='g', alpha=0.3)
+        
+
+    # print(h[0]) # counts per bin 
+
+    # for i in range(len(h[0])):
+    #     h[i] = h[i].strip('[]')
+    #     count_list = h[i].split()
+    #     print(count_list) # this is the list of counts per bin; need to convert to a 2d array for the colorbar
+
+    # print(h[1]) # average longitude per bin
+    # print(h[2]) # average latitude per bin
+    # print(h[3]) 
+
+    figure.colorbar(h[3], ax=ax, label='Number of meteors per bin')
+
+    ax.set_xlabel(r'Ecliptic Longitude $(\lambda - \lambda_{\odot})$')
+    ax.set_ylabel(r'Ecliptic Latitude $(\beta)$')
+    # $({\Delta v_{ptn0} / v_{ptn0} })$
+    # aiming to have something like this, but I want to mask data points outside these bounds instead and set the limits to the regular bounds
+    
+    # ax.xaxis.set_major_locator(plt.FixedLocator([-90, 0, 90, 180, 270, 360])) # defines tick marks on the x axis
+    # ax.xaxis.set_major_formatter(plt.FuncFormatter(relabel)) # re labels the x axis tick marks to show we are labeled at 270 degrees
+
+    ax.set_facecolor("#0D0F81")
+
+    # ax.invert_xaxis()
+
+    if daily_mode[0] == True and (meteor_source == None or meteor_source == 'all'):
+        ax.set_xlim(190, -190) # this is the correct way to view the distribution with H left and AH right
+        ax.set_ylim(-70, 100)
+    else:
+        lmda_min, lmda_max = min(lmda) - 5, max(lmda) + 5
+        beta_min, beta_max = min(beta) - 2.5, max(beta) + 2.5
+
+        ax.set_xlim(lmda_max, lmda_min)
+        ax.set_ylim(beta_min, beta_max)
+
+    if datatype == 'all' or year == 'all':
+        year_label = '2011-2025' # changing the label in figure titles that display all data from 2011-2025
+    elif datatype == 'annual':
+        year_label = year
+    # ax.set_ylim(-60, 90)
+    # ax.set_xlim(-150, 150)
+    # plt.grid()
+    # plt.legend()
+    counts_path = f'{home}/clean file data/0602/{method} events' # should change this save directory at some point
+    os.makedirs(counts_path, exist_ok=True)
+
+    if month == None and meteor_source == None and shower_name == None:
+        if daily_mode[0] == False:
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {year_label}')
+            # plt.savefig(f'{path}/{year_label}_{method}Filter_radiantColorDist{binsize}.png')
+            plt.show()
+
+        else:
+            sl = daily_mode[1]
+
+            ax.set_title(f'Clean Meteor Sources observed in Ecliptic Coordinates - measurements from {sl} in {year_label}')
+
+            # new directory for daily plots
+            daily_path = f'{path}/each day'
+            os.makedirs(daily_path, exist_ok=True)
+
+            # plt.savefig(f'{daily_path}/{year_label}_{sl}_{method}Filter_radiantColorDist{binsize}.png')
+
+            plt.show()
+
+def outline_map(lmda, beta, year, path, method, month=None, meteor_source=None, shower_name=None, background=False, no_shower=False, bounds=None, helios=None, daily_mode=[False, None], datatype='annual', cluster=False, min_cluster_size=15, min_samples=5):
+    '''
+    This function generates a heat map of the user specified orbit file, based on meteor counts per bin
+    Month and source modes may be worked individually or simultaneously - in terms of saving distinct files of data
+    Shower mode is best worked on its own - mainly using this mode to collect the number density matrices for days before/after shower activity
+    cluster: if True, overlays HDBSCAN cluster hulls on top of the heat map
+    '''
+
+    figure, ax = plt.subplots(figsize=(10,5))
+
+    lmda = np.asarray(lmda, dtype=float)
+    beta  = np.asarray(beta, dtype=float)
+
+    h = ax.hist2d(lmda, beta, bins=200, cmap='plasma') # should save files by bin size now for different runs
+
+    counts_path = f'{home}/clean source data/sporadic convex hulls'
+    os.makedirs(counts_path, exist_ok=True)
+
+    counts_file = os.path.join(counts_path, f'{source}_yearly_meteors.txt')
+
+    # use this to show which shower regions are being covered by the set dictionaries
+    if helios is not None:
+
+        for name, coords in helios.items():
+
+            lmda_bounds, beta_bounds, vel_bounds = shower_radius(name, coords, bounds)
+
+            plt.fill_between(lmda, beta, where=(lmda_bounds[0] <= lmda) & (lmda <= lmda_bounds[1]) & (beta_bounds[0] <= beta) & (beta <= beta_bounds[1]), color='g', alpha=0.3)
+
+    # HDBSCAN cluster overlay
+    if cluster:
+
+        coords_2d = np.column_stack((lmda, beta))
+        clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples)
+        labels = clusterer.fit_predict(coords_2d)
+
+        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        print(f'HDBSCAN found {n_clusters} clusters ({np.sum(labels == -1)} noise points out of {len(labels)})')
+
+        max_cluster = []
+
+        for cluster_id in set(labels):
+            if cluster_id == -1:
+                continue # skip noise
+
+            cluster_points = coords_2d[labels == cluster_id]
+            print(len(cluster_points), len(lmda))
+            if len(cluster_points) < 3:
+                continue # need at least 3 points for a hull
+            
+            # tracking which cluster contains the most meteors - this should outline the sporadic source the best but will keep testing
+            if len(cluster_points) > len(max_cluster):
+                max_cluster = cluster_points
+
+            # using this shows all clusters found by HDBSCAN
+            # hull = ConvexHull(cluster_points)
+            # hull_pts = cluster_points[hull.vertices]
+            # hull_pts = np.vstack([hull_pts, hull_pts[0]]) # close the polygon
+            # ax.plot(hull_pts[:, 0], hull_pts[:, 1], color='cyan', linewidth=1.5)
+
+        # using this only shows the largest cluster
+        print(f'YEAR: {year} \t FIGURE METEORS: {len(lmda)} \t CLUSTER METEORS: {len(max_cluster)}')
+            
+        hull = ConvexHull(max_cluster)
+        hull_pts = max_cluster[hull.vertices]
+        hull_pts = np.vstack([hull_pts, hull_pts[0]]) # close the polygon
+        ax.plot(hull_pts[:, 0], hull_pts[:, 1], color='cyan', linewidth=1.5)
+
+    
+
+    figure.colorbar(h[3], ax=ax, label='Number of meteors per bin')
+
+    ax.set_title(f'Clustered radiant distribution, seen in {year}')
+    ax.set_xlabel(r'Ecliptic Longitude $(\lambda - \lambda_{\odot})$')
+    ax.set_ylabel(r'Ecliptic Latitude $(\beta)$')
+
+    ax.set_facecolor("#0D0F81")
+
+    if daily_mode[0] == True and (meteor_source == None or meteor_source == 'all'):
+        ax.set_xlim(190, -190) # this is the correct way to view the distribution with H left and AH right
+        ax.set_ylim(-70, 100)
+    else:
+        lmda_min, lmda_max = min(lmda) - 5, max(lmda) + 5
+        beta_min, beta_max = min(beta) - 2.5, max(beta) + 2.5
+
+        ax.set_xlim(lmda_max, lmda_min)
+        ax.set_ylim(beta_min, beta_max)
+
+    if datatype == 'all' or year == 'all':
+        year_label = '2011-2025'
+    elif datatype == 'annual':
+        year_label = year
+
+    # saving convex hull data to a txt file
+    if year == '2011':
+        with open(counts_file, 'w') as cluster_data: # overwrites file with the new run, as 2011 is the first year in the dataset
+            
+            cluster_data.write(f'SOURCE: \t {source}\n')
+            cluster_data.write(f'\nYEAR: {year} \t FIGURE METEORS: {len(lmda)} \t CLUSTER METEORS: {len(max_cluster)}')
+
+    else:
+        with open(counts_file, 'a') as cluster_data: # appends to the existing file that should be made new on each run
+
+            cluster_data.write(f'\nYEAR: {year} \t {source} CLUSTER METEORS: {len(max_cluster)}')
+
+    # saving the figure to subdirectory
+    cluster_figure_path = f'{counts_path}/figures/{source} convex hull'
+    os.makedirs(cluster_figure_path, exist_ok=True)
+
+    plt.savefig(f'{cluster_figure_path}/{year}{source}_ConvexHull.png')
+    
+    plt.close()
+
+    return h
+
+
+def gaussian_map():
+    pass
+
+# == Clusering algorithms above == #
+
 def compute_heatmap_centroid(h):
     '''
     Compute a weighted centroid from a matplotlib hist2d output.
     The histogram counts are used as weights for the bin centers.
     '''
+    print(len(h))
     if h is None or len(h) < 3:
         return np.nan, np.nan
 
@@ -1540,7 +1785,9 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
         os.makedirs(plot_path, exist_ok=True)
 
         if map_mode == 'density':
-
+            
+            # an attempt for cluster outlines; will try gaussian fitting next - might work better when looking at individual sources
+            # h = outline_map(lmda, beta, year, plot_path, method, daily_mode=daily, datatype=data, cluster=True, min_cluster_size=90, min_samples=7) 
             h = heat_map(lmda, beta, year, plot_path, method, daily_mode=daily, datatype=data)
         
         elif map_mode == 'velocity':
@@ -1721,9 +1968,12 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
             if month != None:
                 h = heat_map(lmda, beta, year, plot_path, method, month=month, meteor_source=source, daily_mode=daily)
 
+                
             else:
-                h = heat_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily)
-        
+                # h = heat_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily)
+                h = outline_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily, datatype=data, cluster=True, min_cluster_size=200, min_samples=15) 
+
+            
         elif map_mode == 'velocity':
 
             # vel_map(raw_lons, raw_lats, vels, year, plot_path)
@@ -1979,7 +2229,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
             plt.title(f'Geocentric Velocities of clean meteor orbits - measurements from {year}', fontsize=14)
 
         plt.grid(alpha=0.3)
-        plt.legend()
+        # plt.legend()
         plt.savefig(f'{plot_path}/{year}_velocities.png')
         plt.show()
 
@@ -2302,7 +2552,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
             plt.title(f'Geocentric Velocities of clean meteor orbits - measurements from {year}', fontsize=14)
 
         plt.grid(alpha=0.3)
-        plt.legend()
+        # plt.legend()
         plt.savefig(f'{plot_path}/{year}{shower}_velocities.png')
         plt.show()
 
@@ -2451,7 +2701,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.title(f'Geocentric Velocities of clean meteor echoes - measurements from {year}', fontsize=14)
 
         plt.grid(alpha=0.3)
-        plt.legend()
+        # plt.legend()
         plt.savefig(f'{plot_path}/{year}{source}_velocities.png')
         plt.close()
 
@@ -2562,7 +2812,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.title(f'Geocentric Velocities of clean meteor echoes - measurements from {month}/{year}', fontsize=14)
 
         plt.grid(alpha=0.3)
-        plt.legend()
+        # plt.legend()
         plt.savefig(f'{plot_path}/{month}{source}_velocities.png')
         plt.close()
 
@@ -3908,7 +4158,7 @@ if raw_or_clean == '1':
         all_days = False
 
     # Option for radiant heatmap, or a scatter plot
-    map = input('Do you wish to see your plot as a color map? (Y or N): ')
+    map = input('Do you wish to see your plot as a color density map? (Y or N): ')
 
     if map.upper() == 'Y':
         map_mode = input('Enter the mode to display the map in (choose between velocity or density): ')
@@ -6157,7 +6407,7 @@ if raw_or_clean == '3':
             
             # heat map of radiant distribution
             h = echo_plot(data['lons'], data['lats'], data['vels'], yr, method, source=source, mode='source')
-            print('lengths: ', len(data['lons']), len(data['lats']))
+            # print('lengths: ', len(data['lons']), len(data['lats']))
             # histograms of orbital parameters
             vel_histo(data['vels'], data['orbitals'], yr, method, source=source, mode='source')
 
@@ -6231,7 +6481,7 @@ if raw_or_clean == '3':
             central_lons.append(lmda_center)
             central_lats.append(beta_center)
 
-        print('num of months: ', len(month_bins))
+        # print('num of months: ', len(month_bins))
         plt.figure(figsize=(10,5))
 
         plt.plot(month_bins, central_lons, color='k')
