@@ -56,6 +56,9 @@ north_apex = [np.arange(310, 230, -1), np.arange(3, 45)] # 25 degree radius lon,
 south_apex = [np.arange(310, 230, -1), np.arange(-35, -3)] # 30 degree radius lon, 25 degree radius lat
 north_toroidal = [np.arange(360, 180, -1), np.arange(50, 80)]
 
+# these are parameters for clustering sensitivity, used in function outline_map
+cluster_dict = {'H' : [80, 10], 'AH' : [70, 10], 'NA' : [225, 18], 'SA' : [100, 10], 'NT' : [125, 15]}
+
 
 def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False, 'ARI']):
 
@@ -810,10 +813,10 @@ def grab_coords(parent):
 
         vel_g = v['Geocentric velocity']
 
-        a = float(v['Semi Major Axis'])
-        e = float(v['Eccentricity'])
-        i = float(v['Inclination'])
-        q = float(v['Perihelion'])
+        a = v['Semi Major Axis']
+        e = v['Eccentricity']
+        i = v['Inclination']
+        q = v['Perihelion']
 
         # checking for a defined ptn0 calculation
         if vel_ptn0[0] == '.' or del_vel_ptn0[0] == '.':
@@ -828,14 +831,15 @@ def grab_coords(parent):
                 continue # skip rows with missing speed data; does not seem to change anything, as any file without these coordinates already lacks pre-to velocity
         
         # curently not skipping meteors that have undefined values for a,e or i. only plotting the ones with defined values
-        if 0.0 < a < 10.0:
-            semi_majors.append(a)
+        if str(a[0]) != '0':
+            if 0.0 < float(a) < 10.0:
+                semi_majors.append(float(a))
         if str(e)[0] != '.': 
-            eccentricities.append(e)
+            eccentricities.append(float(e))
         if str(i)[0] != '.':
-            inclinations.append(i)
+            inclinations.append(float(i))
         if str(q)[0] != '.':
-            perihelions.append(q)
+            perihelions.append(float(q))
 
         # counting the meteors we can make distributions with
         loc_count += 1
@@ -1970,10 +1974,10 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
 
                 
             else:
-                # h = heat_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily)
-                h = outline_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily, datatype=data, cluster=True, min_cluster_size=200, min_samples=15) 
+                h = heat_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily)
+                # h = outline_map(lmda, beta, year, plot_path, method, meteor_source=source, daily_mode=daily, datatype=data, cluster=True, min_cluster_size=cluster_dict[source][0], min_samples=cluster_dict[source][1]) 
 
-            
+
         elif map_mode == 'velocity':
 
             # vel_map(raw_lons, raw_lats, vels, year, plot_path)
@@ -2222,7 +2226,7 @@ def vel_histo(vels, orbitals, year, method, month=None, shower=None, source=None
         plt.xlabel('Geocentric Velocities (km/s)')
         plt.ylabel('Number of Events')
         
-        if year == 'all':
+        if year == 'all' or year == '2011-2025':
             plt.title(f'Geocentric Velocities of clean meteor orbits - measurements from 2011-2025', fontsize=14)
 
         else:
@@ -6323,65 +6327,167 @@ if raw_or_clean == '3':
             plt.close()
     
     elif ten_days:
+
+        # create dict here keyed by year, go back and do successive plots using this dictionary
+        lons_dict = {}
+        lats_dict = {}
+
+        # medians and standard deviations of the source from year to year
+        stats_dict = {'lmda' : {'medians' : [], 'stds' : []}, 'beta' : {'medians' : [], 'stds' : []}}
+
+        source_stats_path = f'{home}/clean source data/all years statistics'
+        os.makedirs(source_stats_path, exist_ok=True)
+
+        source_stats_file = os.path.join(source_stats_path, f'{source}_statistics.txt')
         
-        for yr, bins in sorted(yearly_ten_day_dict.items()):
-            # currently saving longitudes/latitudes for each year, however I eventually want to save plots using vel_histo here too
-            ten_day_folder_path = f'{home}/clean source data/{yr} {source} clean figures/every ten days/orbital parameters'
-            os.makedirs(ten_day_folder_path, exist_ok=True)
-        
+        with open(source_stats_file, 'w') as stats_file:
+            stats_file.write(f'YEAR \t' + r'Median ($\lambda - \lambda_{\odot}$, $\beta$):' + f'\t' + r'Standard Deviation ($\lambda - \lambda_{\odot}$, $\beta$)' + '\n\n')
+
+            for yr, bins in sorted(yearly_ten_day_dict.items()):
+                # currently saving longitudes/latitudes for each year, however I eventually want to save plots using vel_histo here too
+                ten_day_folder_path = f'{home}/clean source data/{yr} {source} clean figures/every ten days/orbital parameters'
+                os.makedirs(ten_day_folder_path, exist_ok=True)
             
-            # creating a plot showing the change in centroid location for each year
-            slon_bins        = []
-            slon_bin_labels = []
-            central_lons     = []
-            central_lats     = []
-
-            for bin_key, data in sorted(bins.items(), key=lambda x: int(x[0].split('-')[0])):
-                h = echo_plot(data['lons'], data['lats'], data['vels'], yr, method, source=source, mode='source', daily=[True, bin_key])
-
-                lmda_center, beta_center = compute_heatmap_centroid(h)
-                if np.isfinite(lmda_center) and np.isfinite(beta_center):
-                    print(f"Year: {yr} \t SL: {bin_key} \t Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
-                else:
-                    print("Centroid: no populated bins found")
                 
-                slon_bins.append(bin_key) 
-                slon_bin_labels.append(int(bin_key.split('-')[0]))  # store 0, 10, 20... instead of '0-9', '10-19'...
-                central_lons.append(lmda_center)
-                central_lats.append(beta_center)
+                # creating a plot showing the change in centroid location for each year
+                slon_bins        = []
+                slon_bin_labels = []
+                central_lons     = []
+                central_lats     = []
 
-            xticks = [0, 100, 200, 300]
-            
-            plt.figure(figsize=(10,5))
+                lons_dict[yr] = {}
+                lats_dict[yr] = {}
+                
 
-            plt.plot(slon_bin_labels, central_lons, color='k')
+                for bin_key, data in sorted(bins.items(), key=lambda x: int(x[0].split('-')[0])):
+                    h = echo_plot(data['lons'], data['lats'], data['vels'], yr, method, source=source, mode='source', daily=[True, bin_key])
 
-            plt.title(f'{source} Central Longitudes ' + r'$(\lambda - \lambda_{{\odot}})$ ' + f'- Measured in {yr}')
-            
+                    lmda_center, beta_center = compute_heatmap_centroid(h)
+                    if np.isfinite(lmda_center) and np.isfinite(beta_center):
+                        print(f"Year: {yr} \t SL: {bin_key} \t Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
+                    else:
+                        print("Centroid: no populated bins found")
+                    
+                    slon_bins.append(bin_key) 
+                    slon_bin_labels.append(int(bin_key.split('-')[0]))  # store 0, 10, 20... instead of '0-9', '10-19'...
+                    central_lons.append(lmda_center)
+                    central_lats.append(beta_center)
+
+                    lons_dict[yr][bin_key] = lmda_center
+                    lats_dict[yr][bin_key] = beta_center
+
+                # different computation for each year, will compare in paper
+                lmda_median, beta_median = round(np.mean(central_lons), 4), round(np.mean(central_lats), 4)
+                lmda_std, beta_std = round(np.std(central_lons), 4), round(np.std(central_lats), 4)
+
+                stats_dict['lmda']['medians'].append(lmda_median)
+                stats_dict['beta']['medians'].append(beta_median)
+
+                stats_dict['lmda']['stds'].append(lmda_std)
+                stats_dict['beta']['stds'].append(beta_std)
+
+                print(f'{yr}: \t Median: ({lmda_median}, {beta_median})\t Standard Deviation: ({lmda_std}, {beta_std})')
+
+                stats_file.write(f'{yr} \t ({lmda_median}, {beta_median})\t ({lmda_std}, {beta_std})\n')
+
+                xticks = [0, 100, 200, 300]
+                
+                plt.figure(figsize=(10,5))
+
+                plt.plot(slon_bin_labels, central_lons, color='k')
+
+                plt.title(f'{source} Central Longitudes ' + r'$(\lambda - \lambda_{\odot})$ ' + f'- Measured in {yr}')
+                
+                plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+                plt.ylabel(f'Heliocentric Longitude (degrees)')
+
+                plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
+
+                plt.grid(True, alpha=0.3)
+                plt.savefig(f'{ten_day_folder_path}/{yr}{source}_longitudes.png')
+                plt.close()
+
+                plt.figure(figsize=(10,5))
+
+                plt.plot(slon_bin_labels, central_lats, color='k')
+
+                plt.title(f'{source} Central Latitudes ' +  r'$(\beta)$ ' +  f'- Measured in {yr}')
+                
+                plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+                plt.ylabel(f'Heliocentric Latitude (degrees)')
+
+                plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
+
+                plt.grid(True, alpha=0.3)
+                plt.savefig(f'{ten_day_folder_path}/{yr}{source}_latitudes.png')
+                plt.close()
+        
+            total_lmda_median = round(np.std(stats_dict['lmda']['medians']), 4)
+            total_beta_median = round(np.std(stats_dict['beta']['medians']), 4)
+
+            total_lmda_std = round(np.std(stats_dict['lmda']['stds']), 4)
+            total_beta_std = round(np.std(stats_dict['beta']['stds']), 4)
+
+            stats_file.write(f'\nTOTAL: \t ({total_lmda_median}, {total_beta_median}) \t ({total_lmda_std}, {total_beta_std})')
+        # plotting all central longitudes on the same plot
+
+        plt.figure(figsize=(10, 5))
+
+        for yr, bins in sorted(lons_dict.items()):
+            bin_labels  = [int(k.split('-')[0]) for k in sorted(bins.keys(), key=lambda x: int(x.split('-')[0]))]
+            bin_centers = [bins[k] for k in sorted(bins.keys(), key=lambda x: int(x.split('-')[0]))]
+            plt.plot(bin_labels, bin_centers, label=yr)
+
+        plt.title(f'{source} Central Longitudes ' + r'$(\lambda - \lambda_{\odot})$' + ' - All Years')
+        plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+        plt.ylabel('Heliocentric Longitude (degrees)')
+        plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
+        plt.legend(title='Year', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f'{home}/clean source data/yearly orbital figures/{source}_longitudes_all_years.png')
+        plt.close()
+
+        # successive central longitude plotting, each new figure contains the next year of data
+        for n, (yr, bins) in enumerate(sorted(lons_dict.items())):
+
+            plt.figure(figsize=(10, 5))
+
+            # plot all years up to and including this one
+            for prev_yr, prev_bins in list(sorted(lons_dict.items()))[:n + 1]:
+                bin_labels  = [int(k.split('-')[0]) for k in sorted(prev_bins.keys(), key=lambda x: int(x.split('-')[0]))]
+                bin_centers = [prev_bins[k] for k in sorted(prev_bins.keys(), key=lambda x: int(x.split('-')[0]))]
+                plt.plot(bin_labels, bin_centers, label=prev_yr)
+
+            plt.title(f'{source} Central Longitudes ' + r'$(\lambda - \lambda_{\odot})$' + f' - Up to {yr}')
             plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
-            plt.ylabel(f'Heliocentric Longitude (degrees)')
-
+            plt.ylabel('Heliocentric Longitude (degrees)')
             plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
-
+            plt.legend(title='Year', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
             plt.grid(True, alpha=0.3)
-            plt.savefig(f'{ten_day_folder_path}/{yr}{source}_longitudes.png')
-            plt.close()
+            plt.tight_layout()
 
-            plt.figure(figsize=(10,5))
+            # plt.savefig(f'{home}/clean source data/{source}_longitudes_upto_{yr}.png')
+            plt.show()
 
-            plt.plot(slon_bin_labels, central_lats, color='k')
+        # plotting all central latitudes on the same plot
+        plt.figure(figsize=(10, 5))
 
-            plt.title(f'{source} Central Latitudes ' +  r'$(\beta)$ ' +  f'- Measured in {yr}')
+        for yr, bins in sorted(lats_dict.items()):
+            bin_labels  = [int(k.split('-')[0]) for k in sorted(bins.keys(), key=lambda x: int(x.split('-')[0]))]
+            bin_centers = [bins[k] for k in sorted(bins.keys(), key=lambda x: int(x.split('-')[0]))]
+            plt.plot(bin_labels, bin_centers, label=yr)
+
+        plt.title(f'{source} Central Latitudes ' + r'$(\beta)$' + ' - All Years')
+        plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+        plt.ylabel('Heliocentric Latitude (degrees)')
+        plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
+        plt.legend(title='Year', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f'{home}/clean source data/yearly orbital figures/{source}_latitudes_all_years.png')
+        plt.close()
             
-            plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
-            plt.ylabel(f'Heliocentric Latitude (degrees)')
-
-            plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
-
-            plt.grid(True, alpha=0.3)
-            plt.savefig(f'{ten_day_folder_path}/{yr}{source}_latitudes.png')
-            plt.close()
-
     elif monthly:
         for yr, months in sorted(yearly_monthly_dict.items()):
             for month, data in sorted(months.items()):
