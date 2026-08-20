@@ -6902,6 +6902,30 @@ if raw_or_clean == '3':
             plt.savefig(f'{home}/clean source data/yearly orbital figures/{source}_latitudes_all_years.png')
             plt.close()
 
+            # plotting all number of cluster meteors from each year on the same plot
+            # would be worth making a plot of these before shower subtraction as well
+            plt.figure(figsize=(10, 5))
+
+            for yr, bins in sorted(num_dict.items()):
+                bin_labels  = [int(k.split('-')[0]) for k in sorted(bins.keys(), key=lambda x: int(x.split('-')[0]))]
+                bin_centers = [bins[k] for k in sorted(bins.keys(), key=lambda x: int(x.split('-')[0]))]
+                plt.plot(bin_labels, bin_centers, label=yr)
+                # plt.scatter(bin_labels, bin_centers)
+
+            plt.title(f'{source} Cluster Sporadic Meteors - All Observed Years')
+            plt.xlabel(r'Solar Longitude $(\lambda_{\odot})$')
+            plt.ylabel(r'Number of Cluster Meteors ($\circ^2$)')
+            plt.xticks(ticks=xticks, labels=[str(x) for x in xticks])
+            plt.legend(title='Year', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+
+            yearly_num_path = f'{home}/clean source data/yearly orbital figures/cluster meteors'
+            os.makedirs(yearly_num_path, exist_ok=True)
+
+            plt.savefig(f'{yearly_num_path}/{source}_numMeteors_all_years.png')
+            plt.close()
+
             # plotting all cluster areas from each year on the same plot
             plt.figure(figsize=(10, 5))
 
