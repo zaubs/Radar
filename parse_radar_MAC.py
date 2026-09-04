@@ -64,11 +64,13 @@ north_toroidal = [np.arange(340, 200, -1), np.arange(50, 80)]
 # source clustering parameters
 cluster_dict = {'H' : [90, 12], 'AH' : [100, 14], 'NA' : [250, 22], 'SA' : [180, 12], 'NT' : [125, 15]}
 
-monthly_cluster_dict = {'H' : [20, 5, 0.35], 'AH' : [20, 5, 0.35], 'NA' : [20, 4, 0.25], 'SA' : [14, 5, 0.12], 'NT' : [14, 5, 0.2]}
+monthly_cluster_dict = {'H' : [30, 5, 0.3], 'AH' : [30, 5, 0.3], 'NA' : [150, 3, 0.25], 'SA' : [75, 5, 0.12], 'NT' : [90, 5, 0.2]}
 # [36, 2, 0.35] also worked well for the helion source for the monthly dict above
 
 ten_day_cluster_dict = {'H' : [10, 5, 0.3], 'AH' : [10, 5, 0.3], 'NA' : [50, 3, 0.3], 'SA' : [25, 3, 0.3], 'NT' : [30, 2, 0.3]}
 
+all_months_cluster_dict = {'H' : [175, 175, 0.2], 'AH' : [80, 40, 0.25], 'NA' : [500, 200, 0.2], 'SA' : [200, 100, 0.2], 'NT' : [100, 30, 0.2]}
+# [175, 175, 0.2]
 def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False, 'ARI']):
 
     '''
@@ -1740,7 +1742,10 @@ def outline_map(lmda, beta, year, path, method, month=None, meteor_source=None, 
         counts_path = f'{home}/clean source data/sporadic convex hulls by month'
         os.makedirs(counts_path, exist_ok=True)
 
-        counts_file = os.path.join(counts_path, f'{source}_monthly_meteors.txt')
+        if year == '2011-2025':
+            counts_file = os.path.join(counts_path, f'{source}_2011-2025_monthly_meteors.txt')
+        else:
+            counts_file = os.path.join(counts_path, f'{source}_monthly_meteors.txt')
 
         # use this to show which shower regions are being covered by the set dictionaries
         if helios is not None:
@@ -1783,7 +1788,11 @@ def outline_map(lmda, beta, year, path, method, month=None, meteor_source=None, 
                 # ax.plot(hull_pts[:, 0], hull_pts[:, 1], color='cyan', linewidth=1.5)
 
             # print(f'YEAR: {year} MONTH: {month} \t FIGURE METEORS: {len(lmda)} \t CLUSTER METEORS: {len(max_cluster)}')
-            small_cluster = len(max_cluster) < monthly_cluster_dict[source][2]*len(lmda)
+            if year == '2011-2025':
+                small_cluster = len(max_cluster) < all_months_cluster_dict[source][2]*len(lmda)
+            else:
+                small_cluster = len(max_cluster) < monthly_cluster_dict[source][2]*len(lmda)
+
             # condition that checks if the cluster shape is too small
             if small_cluster:
                 if str(month) == '02' and str(year) == '2011': # breaks loop if the first cluster is too small
@@ -1856,7 +1865,7 @@ def outline_map(lmda, beta, year, path, method, month=None, meteor_source=None, 
         plt.close()
 
         # saving convex hull data to a txt file
-        if year == '2011' and month == '02':
+        if (year == '2011' and month == '02') or (year == '2011-2025' and month == '01'):
             with open(counts_file, 'w') as cluster_data: # overwrites file with the new run, as 2011 is the first year in the dataset
                 
                 # NUMBER DENSITY CALCULATION # - note that the clusters are not homogenous, so the density profile itself would not be constant. 
@@ -2222,7 +2231,11 @@ def echo_plot(lmda, beta, vels, year, method, month=None, shower=None, source=No
             if month != None:
             
                 if cluster:
-                    h, hull_lons, hull_lats, max_cluster, hull_areas, hull_densities, hull_pts = outline_map(lmda, beta, year, plot_path, method, month=month, meteor_source=source, daily_mode=daily, datatype=data, cluster=True, min_cluster_size=monthly_cluster_dict[source][0], min_samples=monthly_cluster_dict[source][1], prev_hull=prev_hull) 
+                    if year == '2011-2025':
+                        h, hull_lons, hull_lats, max_cluster, hull_areas, hull_densities, hull_pts = outline_map(lmda, beta, year, plot_path, method, month=month, meteor_source=source, daily_mode=daily, datatype=data, cluster=True, min_cluster_size=all_months_cluster_dict[source][0], min_samples=all_months_cluster_dict[source][1], prev_hull=prev_hull) 
+
+                    else:
+                        h, hull_lons, hull_lats, max_cluster, hull_areas, hull_densities, hull_pts = outline_map(lmda, beta, year, plot_path, method, month=month, meteor_source=source, daily_mode=daily, datatype=data, cluster=True, min_cluster_size=monthly_cluster_dict[source][0], min_samples=monthly_cluster_dict[source][1], prev_hull=prev_hull) 
 
                     return h, hull_lons, hull_lats, max_cluster, hull_areas, hull_densities, hull_pts
                 
@@ -7089,17 +7102,17 @@ if raw_or_clean == '3':
                 bin_centers = [bins[k] for k in sorted(bins.keys(), key=lambda x: int(x.split('-')[0]))]
                 plt.plot(bin_labels, bin_centers, label=yr)
 
-            plt.title(f'{source} Cluster Area - All Observed Years')
+            plt.title(f'{source} Cluster Meteors - All Observed Years')
             plt.xlabel(r'Month')
-            plt.ylabel(r'Cluster Area ($\circ^2$)')
+            plt.ylabel(r'Cluster Meteors')
             plt.legend(title='Year', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
             plt.grid(True, alpha=0.3)
             plt.tight_layout()
 
-            yearly_area_path = f'{home}/clean source data/yearly orbital figures/monthly/cluster areas'
-            os.makedirs(yearly_area_path, exist_ok=True)
+            yearly_num_path = f'{home}/clean source data/yearly orbital figures/monthly/cluster nums'
+            os.makedirs(yearly_num_path, exist_ok=True)
 
-            plt.savefig(f'{yearly_area_path}/{source}_monthly_areas_all_years.png')
+            plt.savefig(f'{yearly_num_path}/{source}_monthly_nums_all_years.png')
             plt.close()
 
             # plotting all cluster areas from each year on the same plot
@@ -7285,6 +7298,24 @@ if raw_or_clean == '3':
     
     elif all_months:
 
+        cluster_input = input('Choose the plotting mode to work with (1 for central coordinates, 2 for clustering): ').strip()
+
+        central = False
+        cluster = False
+
+        if cluster_input == '1':
+            central = True
+        elif cluster_input == '2':
+            cluster = True
+
+        # # create dict here keyed by year, go back and do successive plots using this dictionary
+        # lons_dict = {}
+        # lats_dict = {}
+
+        # num_dict = {}
+        # area_dict = {}
+        # density_dict = {}
+
         all_months_path = f'{home}/clean source data/all months figures'
         os.makedirs(all_months_path, exist_ok=True)
 
@@ -7294,27 +7325,69 @@ if raw_or_clean == '3':
         month_bins = []
         central_lons = []
         central_lats = []
-        
-        for month, data in sorted(all_months_dict.items()):
-            print(month, len(data['lons']), len(data['lats']))
 
-            # heat map of radiant distribution
-            h = echo_plot(data['lons'], data['lats'], data['vels'], year, method, month=month, source=source, mode='all months')
-            # print(h)
+        nums = []
+        areas = []
+        densities = []
 
-            # histograms of orbital parameters
-            vel_histo(data['vels'], data['orbitals'], year, method, month=month, source=source, mode='all months')
-
-            # distribution centroid calculation
-            lmda_center, beta_center = compute_heatmap_centroid(h)
-            if np.isfinite(lmda_center) and np.isfinite(beta_center):
-                print(f"Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
-            else:
-                print("Centroid: no populated bins found")
+        if central:
             
-            month_bins.append(month) 
-            central_lons.append(lmda_center)
-            central_lats.append(beta_center)
+            for month, data in sorted(all_months_dict.items()):
+                print(month, len(data['lons']), len(data['lats']))
+
+                # heat map of radiant distribution
+                h = echo_plot(data['lons'], data['lats'], data['vels'], year, method, month=month, source=source, mode='all months')
+                # print(h)
+
+                # histograms of orbital parameters
+                vel_histo(data['vels'], data['orbitals'], year, method, month=month, source=source, mode='all months')
+
+                # distribution centroid calculation
+                lmda_center, beta_center = compute_heatmap_centroid(h)
+                if np.isfinite(lmda_center) and np.isfinite(beta_center):
+                    print(f"Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
+                else:
+                    print("Centroid: no populated bins found")
+                
+                month_bins.append(month) 
+                central_lons.append(lmda_center)
+                central_lats.append(beta_center)
+
+
+        elif cluster:
+
+            for month, data in sorted(all_months_dict.items()):
+
+
+                print(month, len(data['lons']), len(data['lats']))
+
+                # heat map of radiant distribution
+                if str(month) == '01':
+                    h, hull_lons, hull_lats, max_cluster, hull_area, hull_density, hull_pts = echo_plot(data['lons'], data['lats'], data['vels'], year, method, month=month, source=source, mode='source', cluster=True)
+        
+                # the rest of the months use this call, with the previous month's shape being passed through
+                else:
+                    h, hull_lons, hull_lats, max_cluster, hull_area, hull_density, hull_pts = echo_plot(data['lons'], data['lats'], data['vels'], year, method, month=month, source=source, mode='source', cluster=True, prev_hull=hull0)
+                
+                hull0 = hull_pts # this resets the 'previous month' for each successive month of data
+                   
+                # histograms of orbital parameters
+                vel_histo(data['vels'], data['orbitals'], year, method, month=month, source=source, mode='all months')
+
+                # distribution centroid calculation
+                lmda_center, beta_center = compute_heatmap_centroid(h)
+                if np.isfinite(lmda_center) and np.isfinite(beta_center):
+                    print(f"Centroid: lmda = {lmda_center:.2f}, beta = {beta_center:.2f}")
+                else:
+                    print("Centroid: no populated bins found")
+                
+                month_bins.append(month) 
+                central_lons.append(lmda_center)
+                central_lats.append(beta_center)
+
+                nums.append(max_cluster)
+                areas.append(hull_area)
+                densities.append(hull_density)
 
         # print('num of months: ', len(month_bins))
         plt.figure(figsize=(10,5))
@@ -7342,8 +7415,62 @@ if raw_or_clean == '3':
         plt.grid(True, alpha=0.3)
         plt.savefig(f'{all_months_path}/2011-2025_allmonths_{source}_latitudes.png')
         plt.close()
+
+        # plotting number of cluster meteors from each month on the same plot
+        plt.figure(figsize=(10, 5))
+
+        plt.plot(month_bins, nums, color='k')
+
+        plt.title(f'{source} Cluster Meteors - All Observed Years')
+        plt.xlabel(r'Month')
+        plt.ylabel(r'Number of Meteors')
+        # plt.legend(title='Year', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        yearly_num_path = f'{home}/clean source data/yearly orbital figures/monthly/cluster meteors'
+        os.makedirs(yearly_num_path, exist_ok=True)
+
+        plt.savefig(f'{yearly_num_path}/{source}_allmonths_nums_all_years.png')
+        plt.close()
+
+        # plotting all cluster areas from each year on the same plot
+        plt.figure(figsize=(10, 5))
+
+        plt.plot(month_bins, areas, color='k')
+
+        plt.title(f'{source} Cluster Area - All Observed Years')
+        plt.xlabel(r'Month')
+        plt.ylabel(r'Cluster Area ($\circ^2$)')
+        # plt.legend(title='Year', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        yearly_area_path = f'{home}/clean source data/yearly orbital figures/monthly/cluster areas'
+        os.makedirs(yearly_area_path, exist_ok=True)
+
+        plt.savefig(f'{yearly_area_path}/{source}_allmonths_areas_all_years.png')
+        plt.close()
+
+        # plotting all cluster number densities from each year on the same plot
+        plt.figure(figsize=(10, 5))
+
+        plt.plot(month_bins, densities, color='k')
+
+        plt.title(f'{source} Cluster Mean Number Density - All Observed Years')
+        plt.xlabel(r'Month')
+        plt.ylabel(r'Cluster Mean Number Density ($meteors/\circ^2$)')
+        # plt.legend(title='Year', bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        yearly_density_path = f'{home}/clean source data/yearly orbital figures/monthly/cluster densities'
+        os.makedirs(yearly_density_path, exist_ok=True)
+
+        plt.savefig(f'{yearly_density_path}/{source}_allmonths_densities_all_years.png')
+        plt.close()
+        
             
-                
     # make heat plots and scatter (number of meteor) plots for this option
     elif all_data:
 
