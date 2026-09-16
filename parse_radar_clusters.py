@@ -69,7 +69,7 @@ monthly_cluster_dict = {'H' : [30, 5, 0.3], 'AH' : [30, 5, 0.3], 'NA' : [150, 3,
 
 ten_day_cluster_dict = {'H' : [10, 5, 0.3], 'AH' : [10, 5, 0.3], 'NA' : [50, 3, 0.3], 'SA' : [25, 3, 0.3], 'NT' : [30, 2, 0.3]}
 
-all_months_cluster_dict = {'H' : [175, 175, 0.2], 'AH' : [80, 40, 0.25], 'NA' : [500, 200, 0.2], 'SA' : [200, 100, 0.2], 'NT' : [100, 30, 0.2]}
+all_months_cluster_dict = {'H' : [80, 50, 0.2], 'AH' : [80, 40, 0.25], 'NA' : [500, 200, 0.2], 'SA' : [200, 100, 0.2], 'NT' : [100, 30, 0.2]}
 # [175, 175, 0.2]
 
 def Parse(folder, filename, method='all', sources=[False, 'AH'], showers=[False, 'ARI']):
@@ -921,8 +921,8 @@ def voxel_map(lmda, beta, vels, year, name=None, map_mode='shower', threshold=0,
     if beta.max() == beta.min(): beta = beta + np.linspace(0, eps, beta.size)
     if vels.max() == vels.min(): vels = vels + np.linspace(0, eps, vels.size)
 
-    # 3D histogram into 8x8x8 voxels
-    bins = (8, 8, 8)
+    # 3D histogram into 8x8x8 voxels - subject to change
+    bins = (20, 20, 20)
     H, edges = np.histogramdd(np.vstack((lmda, beta, vels)).T, bins=bins) # count per voxel
 
     print(edges)
@@ -3747,6 +3747,9 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
                     meteor_lmda, meteor_beta = getangle(meteor_hel)
                     shower_lmda, shower_beta = getangle(shower_hel)
 
+                    # print(f'Using current SL {file_slon}: ', meteor_lmda, meteor_beta)
+                    # print(f'Using peak SL {slon_peak}:', shower_lmda, shower_beta)
+
                     # if file_slon < slon_peak: # days before the peak of the shower
                     # elift file_slon > slon_peak: # days after the peak of the shower
 
@@ -3786,27 +3789,64 @@ def shower_parser(year, folder, file, file_slon, slon_peak, radiants, radiant_dr
 
 
 
-def shower_hels(shower_rads, shower_slon_peaks):
+def shower_hels(shower_rads, shower_slon, shower_slon_peaks, drift_on=False, shower_drifts=None):
     '''
     Takes the celestial coordinates of a given shower and computes its heliocentric coordinates
     The converted coordinates are used to precisely isolate a shower's location and all meteors within that location in a generated plot using echo_plot, which uses heliocentric lmda/beta
     '''
     shower_dict = {}
+
+    if drift_on == False:
     
-    for shower, rads in shower_rads.items():
+        for shower, rads in shower_rads.items():
 
-        v_cel = getvec(rads[0], rads[1])
+            v_cel = getvec(rads[0], rads[1])
 
-        hel = cel2hel(v_cel, shower_slon_peaks[shower]) # currently doing peaks only, should do each one and tie into the correction done in shower parser for different ra/decs from the peak
+            hel = cel2hel(v_cel, shower_slon_peaks[shower]) # currently doing peaks only, should do each one and tie into the correction done in shower parser for different ra/decs from the peak
 
-        lon, lat = getangle(hel) # store these
+            lon, lat = getangle(hel) # store these
 
-        # scaled_lon = scale(lon) # bring to a 0-360 scale
+            # scaled_lon = scale(lon) # bring to a 0-360 scale
 
-        shower_dict[shower] = [float(lon), float(lat)]
-    
+            shower_dict[shower] = [float(lon), float(lat)]
+        
     # print(shower_dict)
     # shower_helios = shower_dict[shower_name] # two entry list
+
+    # goes through each solar longitude and computes coordinates of shower_based on radiant drift (drift=0 on peak date)
+    else:
+        
+        # iterates each shower
+        for shower, rads in shower_rads.items():
+
+            # initializing each shower's dictionary of solar longitude and corrected coordinates
+            shower_dict[shower] = {}
+
+            for sl in shower_slon['all'][shower]:
+                
+                # these copies should reset for each new sl iterated
+                alpha = rads[0] # need copy as values of alpha and delta change differently for each solar longitude
+                delta = rads[1]
+
+                sl = int(sl)
+
+                day_diff = shower_slon_peaks[shower] - sl # should be positive for days before, negative for days after, zero on the peak day
+
+                # computing rad drift here to go into getvec function call
+
+                # either subtracts or adds to the shower radiant based on days before or after the peak activity day
+                alpha -= day_diff*shower_drifts[shower][0]
+                delta -= day_diff*shower_drifts[shower][1]
+    
+                v_cel = getvec(alpha, delta)
+    
+                hel = cel2hel(v_cel, sl) # currently doing peaks only, should do each one and tie into the correction done in shower parser for different ra/decs from the peak
+    
+                lon, lat = getangle(hel) # store these
+    
+                # scaled_lon = scale(lon) # bring to a 0-360 scale
+        
+                shower_dict[shower][sl] = [float(lon), float(lat)]
 
     return shower_dict # two entry list
 
@@ -4147,7 +4187,7 @@ def voxel_subtract(edges, lmda, beta, vels, days, year, shower_counts, backgroun
     return shower_counts_copy, int(num_left), shower_coords
 
 
-def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, shower_helios, slons, year):
+def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, shower_helios, slons, year, each_sl=False):
 
     '''
     After creating a 3D voxel map of an isolated shower, the background flux is taken 5 days before and after the shower is active and a 3 sigma test is done on each meteor's
@@ -4189,29 +4229,71 @@ def coord_sigma(shower_lmda, shower_beta, shower_vels, shower_days, shower_helio
 
     mass_index = 1 # from MCB
 
-    # 3 sigma boundaries
-    lmda_bounds = [shower_helios[0] - 3*lmda_std, shower_helios[0] + 3*lmda_std]
-    beta_bounds = [shower_helios[1] - 3*beta_std, shower_helios[1] + 3*beta_std]
-    vel_bounds = [vels_mean - 3*vels_std, vels_mean + 3*vels_std]
+    # instead of using one value of shower helios for all solar longitudes, compute the heliocentric coordinate for each shower based on radiant drift experienced
+    # need
+        # shower rad
+        # shower rad drift
+        # solar longitudes (active and outer)
+
+    # or go to where shower helios comes from and change it there
     
+    # only uses the shower's central coordinates on its peak day
+    if each_sl == False:
+        # 3 sigma boundaries
+        lmda_bounds = [shower_helios[0] - 3*lmda_std, shower_helios[0] + 3*lmda_std]
+        beta_bounds = [shower_helios[1] - 3*beta_std, shower_helios[1] + 3*beta_std]
+        vel_bounds = [vels_mean - 3*vels_std, vels_mean + 3*vels_std]
 
-    print(f'Shower Bounds:          {lmda_bounds}, {beta_bounds}, {vel_bounds}')
+        print(f'Shower Bounds:          {lmda_bounds}, {beta_bounds}, {vel_bounds}')
+
+        shower_lmda = np.asarray(shower_lmda)
+        shower_beta = np.asarray(shower_beta)
+        shower_vels = np.asarray(shower_vels)
     
+        # a mask that only keeps meteors found within 3 std of the shower's mean on all three axes
+        loc_mask = ((lmda_bounds[0] <= shower_lmda) & (shower_lmda <= lmda_bounds[1]) &
+                    (beta_bounds[0] <= shower_beta) & (shower_beta <= beta_bounds[1]) &
+                    (vel_bounds[0] <= shower_vels) & (shower_vels <= vel_bounds[1]))
 
-    shower_lmda = np.asarray(shower_lmda)
-    shower_beta = np.asarray(shower_beta)
-    shower_vels = np.asarray(shower_vels)
+        print(f'Passing lmda condition: {np.sum((shower_lmda >= lmda_bounds[0]) & (shower_lmda <= lmda_bounds[1]))}')
+        print(f'Passing beta condition:  {np.sum((shower_beta >= beta_bounds[0]) & (shower_beta <= beta_bounds[1]))}')
+        print(f'Passing vel condition:  {np.sum((shower_vels >= vel_bounds[0]) & (shower_vels <= vel_bounds[1]))}')
+        print(f'Passing all three:       {np.sum(loc_mask)}')
+    
+    # uses the shower's central coordinates from each solar longitude
+    else:
+        lower_lmda, upper_lmda = [], []
+        lower_beta, upper_beta = [], []
 
-    # a mask that only keeps meteors found within 3 std of the shower's mean on all three axes
-    loc_mask = ((lmda_bounds[0] <= shower_lmda) & (shower_lmda <= lmda_bounds[1]) &
-                (beta_bounds[0] <= shower_beta) & (shower_beta <= beta_bounds[1]) &
-                (vel_bounds[0] <= shower_vels) & (shower_vels <= vel_bounds[1]))
-    # Too strong
+        for sl in slons:
+        # 3 sigma boundaries for each day of data
+            lmda_bounds = [shower_helios[sl][0] - 3*lmda_std, shower_helios[sl][0] + 3*lmda_std]
+            beta_bounds = [shower_helios[sl][1] - 3*beta_std, shower_helios[sl][1] + 3*beta_std]
+            vel_bounds = [vels_mean - 3*vels_std, vels_mean + 3*vels_std]
 
-    print(f'Passing lmda condition: {np.sum((shower_lmda >= lmda_bounds[0]) & (shower_lmda <= lmda_bounds[1]))}')
-    print(f'Passing beta condition:  {np.sum((shower_beta >= beta_bounds[0]) & (shower_beta <= beta_bounds[1]))}')
-    print(f'Passing vel condition:  {np.sum((shower_vels >= vel_bounds[0]) & (shower_vels <= vel_bounds[1]))}')
-    print(f'Passing all three:       {np.sum(loc_mask)}')
+            lower_lmda.append(lmda_bounds[0])
+            upper_lmda.append(lmda_bounds[1])
+
+            lower_beta.append(beta_bounds[0])
+            upper_beta.append(beta_bounds[1])
+
+        shower_lmda = np.asarray(shower_lmda)
+        shower_beta = np.asarray(shower_beta)
+        shower_vels = np.asarray(shower_vels)
+
+        # print(shower_helios)
+
+        print(f'Shower Bounds:          {min(lower_lmda), max(upper_lmda)}, {min(lower_beta), max(upper_beta)}, {vel_bounds}')
+
+        # same mask as in the above branch, except this uses the min and max values generated using ech solar longiutde's central point of the shower
+        loc_mask = ((min(lower_lmda) <= shower_lmda) & (shower_lmda <= max(upper_lmda)) &
+                    (min(lower_beta) <= shower_beta) & (shower_beta <= max(upper_beta)) &
+                    (vel_bounds[0] <= shower_vels) & (shower_vels <= vel_bounds[1]))
+
+        print(f'Passing lmda condition: {np.sum((shower_lmda >= min(lower_lmda)) & (shower_lmda <= max(upper_lmda)))}')
+        print(f'Passing beta condition:  {np.sum((shower_beta >= min(lower_beta)) & (shower_beta <= max(upper_beta)))}')
+        print(f'Passing vel condition:  {np.sum((shower_vels >= vel_bounds[0]) & (shower_vels <= vel_bounds[1]))}')
+        print(f'Passing all three:       {np.sum(loc_mask)}')
 
     # mask = (
     # (np.abs(shower_lmda - lmda_mean) <= 3 * lmda_std) &
@@ -4518,17 +4600,23 @@ shower_rad_drifts = {'ARI' : [0.86, 0.18], 'DSX' : [-1.00, 0.56], 'ETA' : [0.70,
 
 shower_mean_velocities = {'ARI' : 35, 'DSX' : 35, 'ETA' : 50,
                         'GEM' : 35, 'ORI' : 50, 'PER' : 50,
-                        'QUA' : 35, 'SDA' : 35}
+                        'QUA' : 35, 'SDA' : 35} 
 
 # count thresholds for voxel_subtract function
-shower_count_thresholds = {'ARI' : 50, 'DSX' : 40, 'ETA' : 120,
-                        'GEM' : 50, 'ORI' : 110, 'PER' : 40,
-                        'QUA' : 10, 'SDA' : 100}
+shower_count_thresholds = {'ARI' : 6, 'DSX' : 6, 'ETA' : 9,
+                        'GEM' : 7, 'ORI' : 8, 'PER' : 6,
+                        'QUA' : 2, 'SDA' : 8}
 
 # the heliocentric longitude and latitude of each meteor shower, calculated using C2H2C script
-shower_helio_coords = shower_hels(shower_rads, shower_slon_peaks)
+shower_helio_coords = shower_hels(shower_rads, shower_slon, shower_slon_peaks)
 
-print('Heliocentric coordinates of each shower: ', shower_helio_coords)
+print('Heliocentric coordinates of each shower\'s peak day of activity: ', shower_helio_coords, '\n')
+
+# heliocentric coordinates of each shower based on solar longitude and experienced drift
+shower_helio_coords_total = shower_hels(shower_rads, shower_slon, shower_slon_peaks, drift_on=True, shower_drifts=shower_rad_drifts)
+# got this working, now just need to use it for each day when checking shower coordinates
+
+# print('Heliocentric coordinates of each shower: ', shower_helio_coords, '\n')
 
 
 
@@ -5682,6 +5770,7 @@ elif raw_or_clean == '2':
 
         # using Cel2Hel2Cel function call to grab the heliocentric location of the chosen meteor shower
         shower_helios = shower_helio_coords[shower_name]
+        shower_helios_total = shower_helio_coords_total[shower_name]
 
         shower_velocity = shower_mean_velocities[shower_name]
         
@@ -6301,9 +6390,10 @@ elif raw_or_clean == '2':
 
         # print(len(prime_lons), len(prime_lons2))
         # the counts are not being passed onto the coordinate test, which might be why we see little change in 3sigma test
-        final_lons, final_lats, final_vels, final_days = coord_sigma(prime_lons, prime_lats, prime_vels, prime_days, shower_helios, full_slons, year)
-        # for the convex hull call, I will need the set of meteors contained within the remaining voxels
-        # saving these meteors to a new file is the next step
+        # final_lons, final_lats, final_vels, final_days = coord_sigma(prime_lons, prime_lats, prime_vels, prime_days, shower_helios, full_slons, year)
+        
+        # contains each solar longitude's central ecliptic coordinate for coordinate sigma check
+        final_lons, final_lats, final_vels, final_days = coord_sigma(prime_lons, prime_lats, prime_vels, prime_days, shower_helios_total, input_slons, year, each_sl=True)
 
         print('\nBefore background subtraction:', len(active_lons), 'After background subtraction: ', len(diff_lons),'After 3 sigma test on voxel counts: ', high_count_meteors, 'After 3 sigma test on coordinates: ', len(final_lons)) # currently not changing in the coord_sigma test -> checking within 3 sigma which might be too high
 
@@ -6331,7 +6421,7 @@ elif raw_or_clean == '2':
 
         # plotting the tracked shower meteors as a scatter plot to make sure I only have the shower itself and not surrounding background
 
-        echo_plot(final_lons, final_lats, final_vels, year, method, mode='mo shower', map_mode='scatter')
+        echo_plot(final_lons, final_lats, final_vels, year, method, mode='mo shower', map_mode=map_mode)
 
         # plotting only the sporadics during this time
             # final_lons contains shower meteors
